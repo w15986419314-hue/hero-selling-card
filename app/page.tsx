@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LAYOUTS, type LayoutId } from "@/lib/layouts";
 import {
   canvasToPngDataUrl,
@@ -18,6 +18,8 @@ type Preview = {
 };
 
 const PLATFORM_LABEL = "淘宝 800×800";
+const MIN_POINTS = 3;
+const MAX_POINTS = 5;
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
@@ -29,29 +31,75 @@ export default function Home() {
   const [selected, setSelected] = useState<LayoutId | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hint, setHint] = useState<string | null>(null);
+  const [exportOk, setExportOk] = useState(false);
   const [copySource, setCopySource] = useState<"llm" | "template" | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const exportTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const filledPoints = useMemo(
     () => points.map((p) => p.trim()).filter(Boolean),
     [points],
   );
 
+  const canGenerate =
+    !!file &&
+    productName.trim().length > 0 &&
+    filledPoints.length >= MIN_POINTS &&
+    filledPoints.length <= MAX_POINTS &&
+    !busy;
+
+  const canExport = !!selected && previews.length > 0 && !busy;
+
+  useEffect(() => {
+    return () => {
+      if (exportTimer.current) clearTimeout(exportTimer.current);
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const validationMessage = useMemo(() => {
+    if (!file) return "请先上传商品图";
+    if (!productName.trim()) return "请填写产品名";
+    if (filledPoints.length < MIN_POINTS) {
+      return `请至少填写 ${MIN_POINTS} 条卖点（当前 ${filledPoints.length} 条）`;
+    }
+    if (filledPoints.length > MAX_POINTS) {
+      return `卖点最多 ${MAX_POINTS} 条`;
+    }
+    return null;
+  }, [file, productName, filledPoints.length]);
+
   const onFileChange = useCallback(async (f: File | null) => {
     setError(null);
+    setHint(null);
+    setExportOk(false);
     setPreviews([]);
     setSelected(null);
     setCopySource(null);
+    setPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
     if (!f) {
       setFile(null);
-      setPreviewUrl(null);
       return;
     }
     if (!f.type.startsWith("image/")) {
       setError("请上传图片文件（JPG / PNG / WebP）");
+      setFile(null);
+      return;
+    }
+    if (f.size > 12 * 1024 * 1024) {
+      setError("图片过大，请压缩到 12MB 以内");
+      setFile(null);
       return;
     }
     setFile(f);
     setPreviewUrl(URL.createObjectURL(f));
+    setHint("图片已就绪，填写卖点后点击生成");
   }, []);
 
   const updatePoint = (index: number, value: string) => {
@@ -60,15 +108,16 @@ export default function Home() {
       next[index] = value;
       return next;
     });
+    setExportOk(false);
   };
 
   const addPoint = () => {
-    if (points.length >= 5) return;
+    if (points.length >= MAX_POINTS) return;
     setPoints((prev) => [...prev, ""]);
   };
 
   const removePoint = (index: number) => {
-    if (points.length <= 3) {
+    if (points.length <= MIN_POINTS) {
       updatePoint(index, "");
       return;
     }
@@ -77,12 +126,11 @@ export default function Home() {
 
   const handleGenerate = async () => {
     setError(null);
-    if (!file) {
-      setError("请先上传商品图");
-      return;
-    }
-    if (filledPoints.length < 1) {
-      setError("请至少填写 1 条卖点");
+    setExportOk(false);
+    setHint(null);
+
+    if (!canGenerate) {
+      setError(validationMessage ?? "请完善必填项后再生成");
       return;
     }
 
@@ -135,7 +183,7 @@ export default function Home() {
         badge = fb.badgeText;
       }
 
-      const image = await loadImageFromFile(file);
+      const image = await loadImageFromFile(file!);
       const next: Preview[] = LAYOUTS.map((layout) => {
         const canvas = composeCard({
           image,
@@ -155,7 +203,10 @@ export default function Home() {
       setPreviews(next);
       setSelected(next[0]?.id ?? null);
       setCopySource(source);
+      setHint("已生成 3 版，点选一版后导出 PNG");
     } catch (e) {
+      setPreviews([]);
+      setSelected(null);
       setError(e instanceof Error ? e.message : "生成失败，请重试");
     } finally {
       setBusy(false);
@@ -174,199 +225,271 @@ export default function Home() {
       `-${item.id}.png`;
     try {
       downloadPng(item.dataUrl, safe);
+      setExportOk(true);
+      setHint(`已导出：${safe}`);
+      if (exportTimer.current) clearTimeout(exportTimer.current);
+      exportTimer.current = setTimeout(() => setExportOk(false), 2500);
     } catch {
-      setError("导出失败，请重试");
+      setExportOk(false);
+      setError("导出失败，请重试或换浏览器再试");
     }
   };
 
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const f = e.dataTransfer.files?.[0] ?? null;
+    void onFileChange(f);
+  };
+
   return (
-    <div className="min-h-full bg-zinc-50 text-zinc-900">
-      <header className="border-b border-zinc-200 bg-white">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 sm:px-6">
+    <div className="app-shell">
+      <header className="app-header">
+        <div className="header-inner">
           <div>
-            <h1 className="text-lg font-semibold tracking-tight sm:text-xl">
-              主图卖点卡
-            </h1>
-            <p className="mt-0.5 text-sm text-zinc-500">
+            <h1 className="header-title">主图卖点卡</h1>
+            <p className="header-sub">
               上传商品图，填卖点，生成 3 版布局并导出 PNG
             </p>
           </div>
-          <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-600">
-            {PLATFORM_LABEL}
-          </span>
+          <span className="platform-pill">{PLATFORM_LABEL}</span>
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-5xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-2">
-        <section className="space-y-5 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
-          <div>
-            <label className="mb-2 block text-sm font-medium">商品图</label>
-            <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-center transition hover:border-zinc-400 hover:bg-zinc-100">
+      <main className="app-main">
+        <section className="panel form-panel">
+          <div className="field">
+            <label className="field-label">
+              商品图 <span className="req">必填</span>
+            </label>
+            <div
+              className={`dropzone ${dragOver ? "dropzone-active" : ""} ${previewUrl ? "dropzone-filled" : ""}`}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragOver(true);
+              }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={onDrop}
+              onClick={() => fileInputRef.current?.click()}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  fileInputRef.current?.click();
+                }
+              }}
+            >
               <input
+                ref={fileInputRef}
                 type="file"
-                accept="image/*"
-                className="hidden"
+                accept="image/jpeg,image/png,image/webp,image/jpg"
+                className="sr-only"
                 onChange={(e) => onFileChange(e.target.files?.[0] ?? null)}
               />
               {previewUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={previewUrl}
-                  alt="上传预览"
-                  className="max-h-40 rounded-lg object-contain"
-                />
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={previewUrl}
+                    alt="上传预览"
+                    className="upload-thumb"
+                  />
+                  <span className="dropzone-hint">点击或拖拽可更换</span>
+                </>
               ) : (
                 <>
-                  <span className="text-sm font-medium text-zinc-700">
-                    点击或拖拽上传
+                  <span className="dropzone-icon" aria-hidden>
+                    ↑
                   </span>
-                  <span className="text-xs text-zinc-500">JPG / PNG / WebP</span>
+                  <span className="dropzone-title">点击或拖拽上传</span>
+                  <span className="dropzone-hint">JPG / PNG / WebP · 建议方图</span>
                 </>
               )}
-            </label>
+            </div>
+            {!file && (
+              <p className="field-help">没有商品图无法生成主图卖点卡</p>
+            )}
           </div>
 
-          <div>
-            <label htmlFor="name" className="mb-2 block text-sm font-medium">
-              产品名
+          <div className="field">
+            <label htmlFor="name" className="field-label">
+              产品名 <span className="req">必填</span>
             </label>
             <input
               id="name"
               type="text"
               value={productName}
-              onChange={(e) => setProductName(e.target.value)}
+              onChange={(e) => {
+                setProductName(e.target.value);
+                setExportOk(false);
+              }}
               placeholder="例如：轻薄羽绒服"
-              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none ring-zinc-400 focus:ring-2"
+              className="input"
+              maxLength={40}
             />
           </div>
 
-          <div>
-            <label className="mb-2 block text-sm font-medium">
-              平台尺寸
-            </label>
-            <input
-              type="text"
-              value={PLATFORM_LABEL}
-              disabled
-              className="w-full cursor-not-allowed rounded-lg border border-zinc-200 bg-zinc-100 px-3 py-2 text-sm text-zinc-600"
-            />
+          <div className="field">
+            <label className="field-label">平台尺寸</label>
+            <div className="input input-disabled">{PLATFORM_LABEL}</div>
           </div>
 
-          <div>
-            <div className="mb-2 flex items-center justify-between">
-              <label className="text-sm font-medium">卖点（3–5 条）</label>
+          <div className="field">
+            <div className="field-row">
+              <label className="field-label">
+                卖点 <span className="req">3–5 条</span>
+              </label>
               <button
                 type="button"
                 onClick={addPoint}
-                disabled={points.length >= 5}
-                className="text-xs font-medium text-zinc-600 hover:text-zinc-900 disabled:opacity-40"
+                disabled={points.length >= MAX_POINTS}
+                className="link-btn"
               >
                 + 添加
               </button>
             </div>
-            <div className="space-y-2">
+            <div className="points-list">
               {points.map((p, i) => (
-                <div key={i} className="flex gap-2">
+                <div key={i} className="point-row">
+                  <span className="point-idx">{i + 1}</span>
                   <input
                     type="text"
                     value={p}
                     onChange={(e) => updatePoint(i, e.target.value)}
-                    placeholder={`卖点 ${i + 1}`}
-                    className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none ring-zinc-400 focus:ring-2"
+                    placeholder={`卖点 ${i + 1}，如：90 绒填充`}
+                    className="input"
+                    maxLength={24}
                   />
                   <button
                     type="button"
                     onClick={() => removePoint(i)}
-                    className="shrink-0 rounded-lg px-2 text-sm text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800"
-                    aria-label="清空或删除卖点"
+                    className="icon-btn"
+                    aria-label={
+                      points.length <= MIN_POINTS ? "清空卖点" : "删除卖点"
+                    }
+                    title={points.length <= MIN_POINTS ? "清空" : "删除"}
                   >
                     ×
                   </button>
                 </div>
               ))}
             </div>
+            {filledPoints.length > 0 && filledPoints.length < MIN_POINTS && (
+              <p className="field-help warn">
+                还需再填 {MIN_POINTS - filledPoints.length} 条卖点
+              </p>
+            )}
           </div>
 
-          <div>
-            <label htmlFor="badge" className="mb-2 block text-sm font-medium">
-              促销角标（可选）
+          <div className="field">
+            <label htmlFor="badge" className="field-label">
+              促销角标 <span className="opt">可选</span>
             </label>
             <input
               id="badge"
               type="text"
               value={badgeText}
-              onChange={(e) => setBadgeText(e.target.value)}
+              onChange={(e) => {
+                setBadgeText(e.target.value);
+                setExportOk(false);
+              }}
               placeholder="例如：限时满减"
-              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none ring-zinc-400 focus:ring-2"
+              className="input"
+              maxLength={12}
             />
           </div>
 
           {error && (
-            <p
-              role="alert"
-              className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700"
-            >
+            <p role="alert" className="banner banner-error">
               {error}
+            </p>
+          )}
+          {!error && hint && (
+            <p role="status" className="banner banner-info">
+              {hint}
+            </p>
+          )}
+          {exportOk && (
+            <p role="status" className="banner banner-success">
+              导出成功，请查看浏览器下载
             </p>
           )}
 
           <button
             type="button"
             onClick={handleGenerate}
-            disabled={busy}
-            className="w-full rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:opacity-60"
+            disabled={!canGenerate}
+            className="btn btn-primary"
+            title={!canGenerate ? (validationMessage ?? undefined) : undefined}
           >
-            {busy ? "生成中…" : "生成"}
+            {busy ? (
+              <span className="btn-loading">
+                <span className="spinner" aria-hidden />
+                生成中…
+              </span>
+            ) : (
+              "生成 3 版预览"
+            )}
           </button>
+          {!canGenerate && !busy && validationMessage && (
+            <p className="btn-hint">{validationMessage}</p>
+          )}
         </section>
 
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-zinc-800">预览（3 版）</h2>
+        <section className="panel preview-panel">
+          <div className="preview-head">
+            <h2 className="preview-title">预览</h2>
             {copySource && (
-              <span className="text-xs text-zinc-500">
+              <span className="source-tag">
                 文案：{copySource === "llm" ? "模型改写" : "模板润色"}
               </span>
             )}
           </div>
 
-          {previews.length === 0 ? (
-            <div className="flex h-64 items-center justify-center rounded-2xl border border-dashed border-zinc-300 bg-white text-sm text-zinc-500">
-              生成后将在此显示三版布局
+          {busy && previews.length === 0 ? (
+            <div className="empty-state">
+              <span className="spinner spinner-lg" aria-hidden />
+              <p>正在合成三版布局…</p>
+            </div>
+          ) : previews.length === 0 ? (
+            <div className="empty-state">
+              <ol className="empty-steps">
+                <li className={file ? "done" : ""}>上传商品图</li>
+                <li className={productName.trim() ? "done" : ""}>填写产品名</li>
+                <li className={filledPoints.length >= MIN_POINTS ? "done" : ""}>
+                  填写至少 3 条卖点
+                </li>
+                <li>点击生成，在此查看三版布局</li>
+              </ol>
             </div>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-1">
+            <div className="preview-list">
               {previews.map((p) => {
                 const active = selected === p.id;
                 return (
                   <button
                     key={p.id}
                     type="button"
-                    onClick={() => setSelected(p.id)}
-                    className={`overflow-hidden rounded-2xl border bg-white text-left shadow-sm transition ${
-                      active
-                        ? "border-zinc-900 ring-2 ring-zinc-900"
-                        : "border-zinc-200 hover:border-zinc-400"
-                    }`}
+                    onClick={() => {
+                      setSelected(p.id);
+                      setExportOk(false);
+                      setHint(`已选中「${p.name}」，可导出 PNG`);
+                    }}
+                    className={`preview-card ${active ? "preview-card-active" : ""}`}
                   >
-                    <div className="flex items-start gap-3 p-3 sm:p-4">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={p.dataUrl}
-                        alt={p.name}
-                        className="h-28 w-28 shrink-0 rounded-lg object-cover sm:h-36 sm:w-36"
-                      />
-                      <div className="min-w-0 pt-1">
-                        <p className="font-medium text-zinc-900">{p.name}</p>
-                        <p className="mt-1 text-xs text-zinc-500">
-                          {p.description}
-                        </p>
-                        {active && (
-                          <p className="mt-2 text-xs font-medium text-zinc-700">
-                            已选中
-                          </p>
-                        )}
-                      </div>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={p.dataUrl}
+                      alt={p.name}
+                      className="preview-img"
+                    />
+                    <div className="preview-meta">
+                      <p className="preview-name">
+                        {p.name}
+                        {active && <span className="selected-badge">已选</span>}
+                      </p>
+                      <p className="preview-desc">{p.description}</p>
                     </div>
                   </button>
                 );
@@ -377,11 +500,14 @@ export default function Home() {
           <button
             type="button"
             onClick={handleExport}
-            disabled={!selected || previews.length === 0}
-            className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-50 disabled:opacity-50"
+            disabled={!canExport}
+            className="btn btn-secondary"
           >
-            导出 PNG
+            {exportOk ? "已导出 ✓" : "导出选中版 PNG"}
           </button>
+          {previews.length > 0 && !selected && (
+            <p className="btn-hint">请先点选一版预览</p>
+          )}
         </section>
       </main>
     </div>
