@@ -1,8 +1,8 @@
-/** Demo form values for one-click try-out (short copy fits lifestyle chips). */
+/** Demo form values — short chips for scene-first heroes. */
 
 export const DEMO_PRODUCT_NAME = "白橡餐桌";
 
-export const DEMO_POINTS = ["榫卯", "1.4m", "无味漆"];
+export const DEMO_POINTS = ["原木榫卯", "1.4米", "环保漆"];
 
 export const DEMO_BADGE = "满减";
 

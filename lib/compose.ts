@@ -1,4 +1,4 @@
-/** Browser Canvas helpers — composite lifestyle scene + short overlays into 800×800 PNG. */
+/** Browser Canvas helpers — scene-first 800×800 Taobao hero (thin edge chips only). */
 
 import {
   CANVAS_SIZE,
@@ -193,25 +193,27 @@ function clearShadow(ctx: CanvasRenderingContext2D) {
   applyShadow(ctx, false);
 }
 
-/** Title: plain on glass bar, or frosted capsule over the scene. */
+/** Title: none | tiny shadow text | plain | capsule (scene heroes prefer none/tiny). */
 function drawTitle(
   ctx: CanvasRenderingContext2D,
   text: string,
   block: TextBlock,
-  asCapsule: boolean,
-  maxLines = 2,
+  mode: "none" | "plain" | "capsule" | "tiny",
+  maxLines = 1,
 ) {
-  const weight = block.weight ?? 800;
+  if (mode === "none") return 0;
+
+  const weight = block.weight ?? 700;
   ctx.font = `${weight} ${block.fontSize}px ${FONT_STACK}`;
-  ctx.textAlign = "left";
+  ctx.textAlign = block.align;
   ctx.textBaseline = "top";
 
   const lines = wrapLines(ctx, text, block.maxWidth).slice(0, maxLines);
   if (lines.length === 0) return 0;
 
-  if (asCapsule) {
-    const padX = 16;
-    const padY = 10;
+  if (mode === "capsule") {
+    const padX = 12;
+    const padY = 6;
     const textW = Math.max(...lines.map((l) => ctx.measureText(l).width));
     const chipW = textW + padX * 2;
     const chipH = lines.length * block.lineHeight + padY * 2;
@@ -219,30 +221,26 @@ function drawTitle(
     const chipY = block.y;
 
     ctx.save();
-    ctx.shadowColor = "rgba(0,0,0,0.2)";
-    ctx.shadowBlur = 12;
-    ctx.shadowOffsetY = 3;
-    ctx.fillStyle = "rgba(255,255,255,0.72)";
-    roundRectPath(ctx, chipX, chipY, chipW, chipH, 14);
+    ctx.shadowColor = "rgba(0,0,0,0.16)";
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetY = 2;
+    ctx.fillStyle = "rgba(255,255,255,0.88)";
+    roundRectPath(ctx, chipX, chipY, chipW, chipH, 999);
     ctx.fill();
     ctx.restore();
 
-    ctx.strokeStyle = "rgba(255,255,255,0.95)";
-    ctx.lineWidth = 1.25;
-    roundRectPath(ctx, chipX, chipY, chipW, chipH, 14);
-    ctx.stroke();
-
     ctx.fillStyle = block.color;
     clearShadow(ctx);
+    ctx.textAlign = "left";
     lines.forEach((line, i) => {
       ctx.fillText(line, chipX + padX, chipY + padY + i * block.lineHeight);
     });
     return chipH;
   }
 
+  // plain | tiny — text only with optional shadow (no panel)
   ctx.fillStyle = block.color;
-  applyShadow(ctx, !!block.shadow, true);
-  ctx.textAlign = block.align;
+  applyShadow(ctx, !!block.shadow || mode === "tiny", true);
   lines.forEach((line, i) => {
     ctx.fillText(line, block.x, block.y + i * block.lineHeight);
   });
@@ -261,9 +259,9 @@ function drawGlassChip(
   stroke?: string,
 ) {
   ctx.save();
-  ctx.shadowColor = "rgba(0,0,0,0.16)";
-  ctx.shadowBlur = 8;
-  ctx.shadowOffsetY = 2;
+  ctx.shadowColor = "rgba(0,0,0,0.22)";
+  ctx.shadowBlur = 10;
+  ctx.shadowOffsetY = 3;
   ctx.fillStyle = fill;
   roundRectPath(ctx, x, y, w, h, radius);
   ctx.fill();
@@ -300,6 +298,10 @@ function drawPoints(
   const list = points
     .map((p) => p.replace(/^[\s·•]+/, "").trim())
     .filter(Boolean)
+    .map((p) => {
+      const chars = Array.from(p);
+      return chars.length > 6 ? chars.slice(0, 6).join("") : p;
+    })
     .slice(0, maxItems);
 
   if (horizontal && style === "pills") {
@@ -421,7 +423,8 @@ function drawCornerRibbon(
   ctx.fillStyle = badge.color;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  const label = text.length > 6 ? text.slice(0, 6) : text;
+  const rchars = Array.from(text);
+  const label = rchars.length > 4 ? rchars.slice(0, 4).join("") : text;
 
   if (corner === "top-left") {
     ctx.translate(48, 48);
@@ -441,7 +444,8 @@ function drawPriceTag(
   badge: BadgeStyle,
 ) {
   ctx.font = `700 ${badge.fontSize}px ${FONT_STACK}`;
-  const label = text.length > 8 ? text.slice(0, 8) : text;
+  const chars = Array.from(text);
+  const label = chars.length > 4 ? chars.slice(0, 4).join("") : text;
   const tw = ctx.measureText(label).width;
   const notch = 14;
   const w = tw + badge.paddingX * 2 + notch;
@@ -499,7 +503,8 @@ function drawPillBadge(
   badge: BadgeStyle,
 ) {
   ctx.font = `700 ${badge.fontSize}px ${FONT_STACK}`;
-  const label = text.length > 8 ? text.slice(0, 8) : text;
+  const chars = Array.from(text);
+  const label = chars.length > 4 ? chars.slice(0, 4).join("") : text;
   const w = ctx.measureText(label).width + badge.paddingX * 2;
   const h = badge.fontSize + badge.paddingY * 2;
   let x = badge.x;
@@ -567,9 +572,11 @@ export function composeCard(input: ComposeInput): HTMLCanvasElement {
     drawOverlay(ctx, o);
   }
 
-  const titleText = productName.trim() || "商品主图";
-  const asCapsule = (layout.titleMode ?? "plain") === "capsule";
-  drawTitle(ctx, titleText, layout.title, asCapsule, 2);
+  const titleMode = layout.titleMode ?? "none";
+  if (titleMode !== "none") {
+    const titleText = productName.trim() || "商品主图";
+    drawTitle(ctx, titleText, layout.title, titleMode, titleMode === "tiny" ? 1 : 1);
+  }
 
   const horizontalPoints = (layout.pointsFlow ?? "vertical") === "horizontal";
   drawPoints(ctx, points, layout.points, horizontalPoints);

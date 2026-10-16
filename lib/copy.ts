@@ -7,11 +7,12 @@ function stripNoise(s: string): string {
     .trim();
 }
 
-/** Shorten / normalize one selling point for card chips (≤10 chars). */
+/** Shorten one selling point for scene-hero chips (≤6 Chinese chars). */
 export function polishPoint(raw: string, _index: number): string {
   let t = stripNoise(raw);
   if (!t) return "";
-  if (t.length > 10) t = t.slice(0, 10);
+  const chars = Array.from(t);
+  if (chars.length > 6) t = chars.slice(0, 6).join("");
   return t;
 }
 
@@ -19,16 +20,17 @@ export function polishPoints(points: string[]): string[] {
   return points
     .map((p) => p.trim())
     .filter(Boolean)
-    .slice(0, 4)
+    .slice(0, 3)
     .map((p, i) => polishPoint(p, i))
     .filter(Boolean);
 }
 
-/** Tighten product name for title area. */
+/** Tiny optional title — keep short so scene dominates. */
 export function polishProductName(name: string): string {
   const t = name.trim().replace(/\s+/g, " ");
-  if (t.length <= 12) return t;
-  return t.slice(0, 12);
+  const chars = Array.from(t);
+  if (chars.length <= 8) return t;
+  return chars.slice(0, 8).join("");
 }
 
 export function templateRewrite(input: {
@@ -48,14 +50,21 @@ export function templateRewrite(input: {
       : input.points
           .map((p) => stripNoise(p))
           .filter(Boolean)
-          .map((p) => (p.length > 10 ? p.slice(0, 10) : p))
-          .slice(0, 4);
+          .map((p) => {
+            const chars = Array.from(p);
+            return chars.length > 6 ? chars.slice(0, 6).join("") : p;
+          })
+          .slice(0, 3);
 
   const badge = input.badgeText?.trim();
   return {
     productName: polishProductName(input.productName || "商品主图"),
     points: fallback,
-    badgeText: badge ? (badge.length > 6 ? badge.slice(0, 6) : badge) : undefined,
+    badgeText: badge
+      ? Array.from(badge).length > 4
+        ? Array.from(badge).slice(0, 4).join("")
+        : badge
+      : undefined,
     source: "template",
   };
 }

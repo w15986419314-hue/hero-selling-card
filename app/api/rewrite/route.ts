@@ -17,8 +17,8 @@ async function callOpenAICompatible(
   badgeText?: string,
 ): Promise<{ productName: string; points: string[]; badgeText?: string } | null> {
   const prompt = [
-    "你是电商主图文案助手。把商品名和卖点改写成适合 800×800 主图展示的短句。",
-    "要求：商品名 ≤16 字；每条卖点 ≤14 字；保留原意；不要夸张违禁词；返回纯 JSON。",
+    "你是淘宝场景主图文案助手。把卖点改成极短筹码文案，场景图本身是主角。",
+    "要求：商品名 ≤8 字（可省略感）；每条卖点 ≤6 字；最多 3 条；角标 ≤4 字；保留原意；不要夸张违禁词；返回纯 JSON。",
     `商品名：${productName}`,
     `卖点：${JSON.stringify(points)}`,
     badgeText ? `角标：${badgeText}` : "",
@@ -58,9 +58,9 @@ async function callOpenAICompatible(
   };
   if (!parsed.productName || !Array.isArray(parsed.points)) return null;
   return {
-    productName: String(parsed.productName).slice(0, 24),
-    points: parsed.points.map(String).slice(0, 5),
-    badgeText: parsed.badgeText ? String(parsed.badgeText).slice(0, 12) : badgeText,
+    productName: Array.from(String(parsed.productName)).slice(0, 8).join(""),
+    points: parsed.points.map((p) => Array.from(String(p)).slice(0, 6).join("")).slice(0, 3),
+    badgeText: parsed.badgeText ? Array.from(String(parsed.badgeText)).slice(0, 4).join("") : badgeText,
   };
 }
 

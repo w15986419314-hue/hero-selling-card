@@ -286,7 +286,7 @@ export default function Home() {
           <div>
             <h1 className="header-title">主图卖点卡</h1>
             <p className="header-sub">
-              上传场景图，填短卖点，生成 3 版叠层主图并导出 PNG
+              上传场景图，填极短卖点（每条≤6字），生成 3 版场景主图并导出 PNG
             </p>
           </div>
           <span className="platform-pill">{PLATFORM_LABEL}</span>
@@ -305,7 +305,7 @@ export default function Home() {
               {demoBusy ? "加载示例…" : "填入示例"}
             </button>
             <p className="demo-hint">
-              一键填入短卖点与示例场景图，可直接生成；也可再换成自己的场景图
+              一键填入≤6字卖点与示例场景图，可直接生成；也可再换成自己的场景图
             </p>
           </div>
 
@@ -417,9 +417,9 @@ export default function Home() {
                     type="text"
                     value={p}
                     onChange={(e) => updatePoint(i, e.target.value)}
-                    placeholder={`卖点 ${i + 1}，如：榫卯`}
+                    placeholder={`卖点 ${i + 1}，≤6字如：榫卯`}
                     className="input"
-                    maxLength={24}
+                    maxLength={6}
                     aria-label={`卖点 ${i + 1}`}
                   />
                   <button
@@ -512,7 +512,7 @@ export default function Home() {
           {busy && previews.length === 0 ? (
             <div className="empty-state">
               <span className="spinner spinner-lg" aria-hidden />
-              <p>正在合成三版布局…</p>
+              <p>正在合成三版场景主图…</p>
             </div>
           ) : previews.length === 0 ? (
             <div className="empty-state">
