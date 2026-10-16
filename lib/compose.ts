@@ -593,6 +593,71 @@ export function canvasToPngDataUrl(canvas: HTMLCanvasElement): string {
   return canvas.toDataURL("image/png");
 }
 
+/**
+ * Draw source onto a fresh CANVAS_SIZE×CANVAS_SIZE canvas and return PNG data URL.
+ * Guarantees export pixels are exactly 800×800.
+ */
+export function rasterizeToFixedPng(
+  source: CanvasImageSource,
+  srcW?: number,
+  srcH?: number,
+): string {
+  const out = document.createElement("canvas");
+  out.width = CANVAS_SIZE;
+  out.height = CANVAS_SIZE;
+  const ctx = out.getContext("2d");
+  if (!ctx) throw new Error("Canvas 不可用");
+
+  const w =
+    srcW ??
+    (source instanceof HTMLCanvasElement
+      ? source.width
+      : source instanceof HTMLImageElement
+        ? source.naturalWidth || source.width
+        : CANVAS_SIZE);
+  const h =
+    srcH ??
+    (source instanceof HTMLCanvasElement
+      ? source.height
+      : source instanceof HTMLImageElement
+        ? source.naturalHeight || source.height
+        : CANVAS_SIZE);
+
+  if (w === CANVAS_SIZE && h === CANVAS_SIZE) {
+    ctx.drawImage(source, 0, 0);
+  } else {
+    const scale = Math.max(CANVAS_SIZE / w, CANVAS_SIZE / h);
+    const dw = w * scale;
+    const dh = h * scale;
+    const dx = (CANVAS_SIZE - dw) / 2;
+    const dy = (CANVAS_SIZE - dh) / 2;
+    ctx.drawImage(source, dx, dy, dw, dh);
+  }
+
+  return out.toDataURL("image/png");
+}
+
+/** Compose result → PNG data URL, always 800×800. */
+export function exportPngDataUrl(canvas: HTMLCanvasElement): string {
+  return rasterizeToFixedPng(canvas);
+}
+
+/** Re-export a preview data URL as a guaranteed 800×800 PNG. */
+export function exportPngFromDataUrl(dataUrl: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        resolve(rasterizeToFixedPng(img));
+      } catch (e) {
+        reject(e);
+      }
+    };
+    img.onerror = () => reject(new Error("预览图加载失败，无法导出"));
+    img.src = dataUrl;
+  });
+}
+
 /** Safe download name: `{productName}-卖点卡-{layout}.png` */
 export function sanitizeExportFilename(
   productName: string,

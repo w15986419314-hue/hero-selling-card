@@ -591,3 +591,9 @@ body {
   font-weight: 500;
 }
 
+.export-size-hint {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+

@@ -1,11 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { LAYOUTS, type LayoutId } from "@/lib/layouts";
+import { CANVAS_SIZE, LAYOUTS, type LayoutId } from "@/lib/layouts";
 import {
-  canvasToPngDataUrl,
   composeCard,
   downloadPng,
+  exportPngDataUrl,
+  exportPngFromDataUrl,
   loadImageFromFile,
   sanitizeExportFilename,
 } from "@/lib/compose";
@@ -232,7 +233,7 @@ export default function Home() {
           id: layout.id,
           name: layout.name,
           description: layout.description,
-          dataUrl: canvasToPngDataUrl(canvas),
+          dataUrl: exportPngDataUrl(canvas),
         };
       });
 
@@ -249,7 +250,7 @@ export default function Home() {
     }
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     setError(null);
     const item = previews.find((p) => p.id === selected);
     if (!item) {
@@ -261,9 +262,10 @@ export default function Home() {
       item.name,
     );
     try {
-      downloadPng(item.dataUrl, safe);
+      const png = await exportPngFromDataUrl(item.dataUrl);
+      downloadPng(png, safe);
       setExportOk(true);
-      setHint(`已导出：${safe}`);
+      setHint(`已导出 ${CANVAS_SIZE}×${CANVAS_SIZE}：${safe}`);
       if (exportTimer.current) clearTimeout(exportTimer.current);
       exportTimer.current = setTimeout(() => setExportOk(false), 2500);
     } catch {
@@ -565,12 +567,15 @@ export default function Home() {
 
           <button
             type="button"
-            onClick={handleExport}
+            onClick={() => void handleExport()}
             disabled={!canExport}
             className="btn btn-secondary"
           >
             {exportOk ? "已导出 ✓" : "导出选中版 PNG"}
           </button>
+          <p className="btn-hint export-size-hint">
+            导出尺寸固定 {CANVAS_SIZE}×{CANVAS_SIZE} PNG（淘宝主图）
+          </p>
           {previews.length > 0 && !selected && (
             <p className="btn-hint">请先点选一版预览</p>
           )}
