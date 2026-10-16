@@ -12,10 +12,9 @@ import {
 } from "@/lib/compose";
 import { templateRewrite } from "@/lib/copy";
 import {
-  DEMO_BADGE,
-  DEMO_POINTS,
-  DEMO_PRODUCT_NAME,
+  DEMO_SCENES,
   loadDemoImageFile,
+  type DemoSceneId,
 } from "@/lib/demo";
 
 type Preview = {
@@ -143,17 +142,20 @@ export default function Home() {
     setPoints((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const fillDemo = async () => {
+  const fillDemo = async (sceneId: DemoSceneId = "dining") => {
     setError(null);
     setExportOk(false);
     setDemoBusy(true);
     try {
-      setProductName(DEMO_PRODUCT_NAME);
-      setPoints([...DEMO_POINTS]);
-      setBadgeText(DEMO_BADGE);
-      const demoFile = await loadDemoImageFile();
+      const scene = DEMO_SCENES[sceneId];
+      setProductName(scene.productName);
+      setPoints([...scene.points]);
+      setBadgeText(scene.badge);
+      const demoFile = await loadDemoImageFile(sceneId);
       await onFileChange(demoFile);
-      setHint("已填入示例短卖点与场景图，可直接点「生成 3 版预览」");
+      setHint(
+        `已填入「${scene.label}」短卖点与场景图，可直接点「生成 3 版预览」`,
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : "示例加载失败");
     } finally {
@@ -298,16 +300,26 @@ export default function Home() {
       <main className="app-main">
         <section className="panel form-panel">
           <div className="demo-row">
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => void fillDemo()}
-              disabled={busy || demoBusy}
-            >
-              {demoBusy ? "加载示例…" : "填入示例"}
-            </button>
+            <div className="demo-actions">
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => void fillDemo("dining")}
+                disabled={busy || demoBusy}
+              >
+                {demoBusy ? "加载示例…" : "填入示例"}
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => void fillDemo("living")}
+                disabled={busy || demoBusy}
+              >
+                换场景样图
+              </button>
+            </div>
             <p className="demo-hint">
-              一键填入≤6字卖点与示例场景图，可直接生成；也可再换成自己的场景图
+              「填入示例」餐厅场景；「换场景样图」客厅沙发场景。均可直接生成，也可再换成自己的图
             </p>
           </div>
 
@@ -520,7 +532,7 @@ export default function Home() {
             <div className="empty-state">
               <ol className="empty-steps">
                 <li className={file ? "done" : ""}>
-                  上传场景图（或点「填入示例」）
+                  上传场景图（或点「填入示例」/「换场景样图」）
                 </li>
                 <li className={productName.trim() ? "done" : ""}>填写产品名</li>
                 <li className={filledPoints.length >= MIN_POINTS ? "done" : ""}>

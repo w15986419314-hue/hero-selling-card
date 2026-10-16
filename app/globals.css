@@ -565,6 +565,13 @@ body {
   margin-bottom: 4px;
 }
 
+.demo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
 .btn-ghost {
   width: auto;
   align-self: flex-start;
