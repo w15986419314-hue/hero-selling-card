@@ -1,4 +1,4 @@
-/** Browser Canvas helpers — composite product + copy into Taobao-style 800×800 PNG. */
+/** Browser Canvas helpers — composite lifestyle scene + short overlays into 800×800 PNG. */
 
 import {
   CANVAS_SIZE,
@@ -46,7 +46,6 @@ function drawContainRight(
   const areaH = size;
   const iw = img.naturalWidth || img.width;
   const ih = img.naturalHeight || img.height;
-  // Tight pad so product fills the stage
   const pad = 20;
   const scale = Math.min((areaW - pad * 2) / iw, (areaH - pad * 2) / ih);
   const dw = iw * scale;
@@ -103,9 +102,20 @@ function drawOverlay(ctx: CanvasRenderingContext2D, o: OverlaySpec) {
   }
 
   if (o.kind === "roundRect") {
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,0.18)";
+    ctx.shadowBlur = 16;
+    ctx.shadowOffsetY = 4;
     ctx.fillStyle = o.color;
     roundRectPath(ctx, o.x, o.y, o.w, o.h, o.radius);
     ctx.fill();
+    ctx.restore();
+    if (o.stroke) {
+      ctx.strokeStyle = o.stroke;
+      ctx.lineWidth = o.strokeWidth ?? 1;
+      roundRectPath(ctx, o.x, o.y, o.w, o.h, o.radius);
+      ctx.stroke();
+    }
     return;
   }
 
@@ -183,7 +193,7 @@ function clearShadow(ctx: CanvasRenderingContext2D) {
   applyShadow(ctx, false);
 }
 
-/** Title: strong hierarchy; corner-stack draws as a white capsule. */
+/** Title: plain on glass bar, or frosted capsule over the scene. */
 function drawTitle(
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -209,13 +219,18 @@ function drawTitle(
     const chipY = block.y;
 
     ctx.save();
-    ctx.shadowColor = "rgba(0,0,0,0.22)";
-    ctx.shadowBlur = 10;
-    ctx.shadowOffsetY = 2;
-    ctx.fillStyle = "rgba(255,255,255,0.95)";
-    roundRectPath(ctx, chipX, chipY, chipW, chipH, 10);
+    ctx.shadowColor = "rgba(0,0,0,0.2)";
+    ctx.shadowBlur = 12;
+    ctx.shadowOffsetY = 3;
+    ctx.fillStyle = "rgba(255,255,255,0.72)";
+    roundRectPath(ctx, chipX, chipY, chipW, chipH, 14);
     ctx.fill();
     ctx.restore();
+
+    ctx.strokeStyle = "rgba(255,255,255,0.95)";
+    ctx.lineWidth = 1.25;
+    roundRectPath(ctx, chipX, chipY, chipW, chipH, 14);
+    ctx.stroke();
 
     ctx.fillStyle = block.color;
     clearShadow(ctx);
@@ -235,8 +250,34 @@ function drawTitle(
   return lines.length * block.lineHeight;
 }
 
+function drawGlassChip(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  radius: number,
+  fill: string,
+  stroke?: string,
+) {
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.16)";
+  ctx.shadowBlur = 8;
+  ctx.shadowOffsetY = 2;
+  ctx.fillStyle = fill;
+  roundRectPath(ctx, x, y, w, h, radius);
+  ctx.fill();
+  ctx.restore();
+  if (stroke) {
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = 1;
+    roundRectPath(ctx, x, y, w, h, radius);
+    ctx.stroke();
+  }
+}
+
 /**
- * Horizontal row of chips for bottom-band; vertical stack for others.
+ * Horizontal row of glass chips for bottom edge; vertical stack otherwise.
  */
 function drawPoints(
   ctx: CanvasRenderingContext2D,
@@ -249,8 +290,9 @@ function drawPoints(
   const padX = block.chipPaddingX ?? 12;
   const padY = block.chipPaddingY ?? 6;
   const radius = block.chipRadius ?? 6;
-  const chipBg = block.chipBg ?? "rgba(255,255,255,0.9)";
-  const maxItems = block.maxItems ?? 4;
+  const chipBg = block.chipBg ?? "rgba(255,255,255,0.72)";
+  const chipStroke = block.chipStroke;
+  const maxItems = block.maxItems ?? 3;
 
   ctx.font = `${weight} ${block.fontSize}px ${FONT_STACK}`;
   ctx.textBaseline = "top";
@@ -264,7 +306,6 @@ function drawPoints(
     let x = block.x;
     const y = block.y;
     for (const cleaned of list) {
-      // Single-line chip only — truncate visually via wrap limit
       const lines = wrapLines(ctx, cleaned, block.maxWidth).slice(0, 1);
       const label = lines[0] ?? cleaned;
       const tw = ctx.measureText(label).width;
@@ -273,12 +314,10 @@ function drawPoints(
 
       if (x + chipW > block.x + block.maxWidth) break;
 
-      ctx.fillStyle = chipBg;
-      clearShadow(ctx);
-      roundRectPath(ctx, x, y, chipW, chipH, radius);
-      ctx.fill();
+      drawGlassChip(ctx, x, y, chipW, chipH, radius, chipBg, chipStroke);
 
       ctx.fillStyle = block.color;
+      clearShadow(ctx);
       ctx.textAlign = "left";
       ctx.fillText(label, x + padX, y + padY);
 
@@ -319,22 +358,14 @@ function drawPoints(
       chipX = block.x - chipW / 2;
     }
 
-    ctx.fillStyle = chipBg;
     clearShadow(ctx);
     if (style === "pills") {
-      ctx.save();
-      ctx.shadowColor = "rgba(0,0,0,0.22)";
-      ctx.shadowBlur = 8;
-      ctx.shadowOffsetY = 2;
-      roundRectPath(ctx, chipX, y, chipW, chipH, radius);
-      ctx.fill();
-      ctx.restore();
+      drawGlassChip(ctx, chipX, y, chipW, chipH, radius, chipBg, chipStroke);
     } else {
-      // bars: left accent bar + chip
-      roundRectPath(ctx, chipX, y, chipW, chipH, radius);
-      ctx.fill();
+      // bars: frosted row + warm accent
+      drawGlassChip(ctx, chipX, y, chipW, chipH, radius, chipBg, chipStroke);
       ctx.fillStyle = "#f97316";
-      ctx.fillRect(chipX, y + 4, 3, chipH - 8);
+      ctx.fillRect(chipX, y + 5, 3, chipH - 10);
     }
 
     ctx.fillStyle = block.color;
@@ -347,20 +378,18 @@ function drawPoints(
   }
 }
 
-/** Classic Taobao corner ribbon (diagonal banner). */
+/** Classic Taobao corner ribbon (commercial badge). */
 function drawCornerRibbon(
   ctx: CanvasRenderingContext2D,
   text: string,
   badge: BadgeStyle,
 ) {
   const corner = badge.corner ?? "top-left";
-  const band = 42;
-  const reach = 168;
+  const reach = 158;
 
   ctx.save();
   ctx.font = `700 ${badge.fontSize}px ${FONT_STACK}`;
 
-  // Ribbon polygon into the corner
   ctx.beginPath();
   if (corner === "top-left") {
     ctx.moveTo(0, 0);
@@ -375,7 +404,6 @@ function drawCornerRibbon(
   ctx.fillStyle = badge.bg;
   ctx.fill();
 
-  // Fold shadow tip
   ctx.beginPath();
   if (corner === "top-left") {
     ctx.moveTo(reach * 0.55, 0);
@@ -390,22 +418,19 @@ function drawCornerRibbon(
   ctx.fillStyle = "rgba(0,0,0,0.18)";
   ctx.fill();
 
-  // Rotated label
   ctx.fillStyle = badge.color;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   const label = text.length > 6 ? text.slice(0, 6) : text;
 
   if (corner === "top-left") {
-    ctx.translate(52, 52);
+    ctx.translate(48, 48);
     ctx.rotate(-Math.PI / 4);
   } else {
-    ctx.translate(CANVAS_SIZE - 52, 52);
+    ctx.translate(CANVAS_SIZE - 48, 48);
     ctx.rotate(Math.PI / 4);
   }
   ctx.fillText(label, 0, 0);
-  // band unused except for visual density reference
-  void band;
   ctx.restore();
 }
 
@@ -434,7 +459,6 @@ function drawPriceTag(
   ctx.shadowBlur = 6;
   ctx.shadowOffsetY = 2;
   ctx.beginPath();
-  // Pointed left (or right for right-anchor) tag
   if (badge.anchor === "right") {
     ctx.moveTo(x, y);
     ctx.lineTo(x + w - notch, y);
@@ -453,7 +477,6 @@ function drawPriceTag(
   ctx.fill();
   ctx.restore();
 
-  // Eyelet
   ctx.fillStyle = "rgba(255,255,255,0.85)";
   const eyeX =
     badge.anchor === "right" ? x + w - notch / 2 - 2 : x + notch / 2 + 2;
@@ -525,6 +548,7 @@ export function composeCard(input: ComposeInput): HTMLCanvasElement {
   const { image, productName, points, badgeText, layout } = input;
   const bg = layout.canvasBg ?? "#f5f5f5";
 
+  // Lifestyle default: cover the full scene. Contain modes kept for rare catalog use.
   if (layout.imageFit === "contain-right") {
     drawContainRight(
       ctx,
@@ -544,10 +568,10 @@ export function composeCard(input: ComposeInput): HTMLCanvasElement {
   }
 
   const titleText = productName.trim() || "商品主图";
-  const asCapsule = layout.id === "corner-stack";
+  const asCapsule = (layout.titleMode ?? "plain") === "capsule";
   drawTitle(ctx, titleText, layout.title, asCapsule, 2);
 
-  const horizontalPoints = layout.id === "bottom-band";
+  const horizontalPoints = (layout.pointsFlow ?? "vertical") === "horizontal";
   drawPoints(ctx, points, layout.points, horizontalPoints);
 
   const badge = badgeText?.trim();

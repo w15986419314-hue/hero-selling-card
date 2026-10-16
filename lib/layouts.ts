@@ -1,4 +1,4 @@
-/** Three 800×800 layout presets — Taobao-style shoppable hero cards. */
+/** Three 800×800 layout presets — Taobao lifestyle scene + selling-point overlays. */
 
 export type LayoutId = "bottom-band" | "left-panel" | "corner-stack";
 
@@ -22,6 +22,9 @@ export type OverlaySpec =
       h: number;
       color: string;
       radius: number;
+      /** Optional glass rim */
+      stroke?: string;
+      strokeWidth?: number;
     };
 
 export interface TextBlock {
@@ -45,6 +48,8 @@ export interface PointsBlock extends TextBlock {
   chipPaddingX?: number;
   chipPaddingY?: number;
   chipRadius?: number;
+  /** Glass rim on pills */
+  chipStroke?: string;
   /** Max points drawn (cards stay scannable) */
   maxItems?: number;
 }
@@ -68,87 +73,103 @@ export interface BadgeStyle {
   anchor?: "left" | "right";
 }
 
+export type TitleMode = "plain" | "capsule";
+export type PointsFlow = "horizontal" | "vertical";
+
 export interface LayoutPreset {
   id: LayoutId;
   name: string;
   description: string;
+  /** Lifestyle heroes always cover the full scene */
   imageFit: "cover-center" | "contain-right" | "contain-center";
-  /** Soft canvas fill behind contain fits */
+  /** Soft canvas fill behind contain fits (unused for lifestyle cover) */
   canvasBg?: string;
-  /** Left gutter width when imageFit is contain-right */
   leftGutter?: number;
   overlays?: OverlaySpec[];
   title: TextBlock;
+  titleMode?: TitleMode;
   points: PointsBlock;
+  pointsFlow?: PointsFlow;
   badge: BadgeStyle;
 }
 
 export const CANVAS_SIZE = 800;
-/** ~6% safe margin — product stays large */
-export const SAFE_MARGIN = 48;
+/** ~5% safe margin — scene stays large */
+export const SAFE_MARGIN = 40;
 
 export const LAYOUTS: LayoutPreset[] = [
   {
-    // Classic e-comm: full-bleed product + compact solid bottom info strip
+    // Lifestyle: full-bleed scene + thin frosted bottom edge bar
     id: "bottom-band",
-    name: "底部条",
-    description: "商品满幅，底栏短卖点 + 左上角飘带——适合白底/浅色商品图",
+    name: "底边玻璃条",
+    description: "场景满幅，底边轻玻璃条放标题与短卖点——适合餐桌/客厅场景图",
     imageFit: "cover-center",
     overlays: [
-      // Tight solid band — not a muddy half-image gradient
+      // Soft lift under the bar — does not bury the room
       {
-        kind: "rect",
+        kind: "gradient",
         x: 0,
-        y: 640,
+        y: 560,
         w: 800,
-        h: 160,
-        color: "rgba(15, 23, 42, 0.92)",
+        h: 240,
+        direction: "up",
+        stops: [
+          [0, "rgba(0,0,0,0)"],
+          [0.55, "rgba(0,0,0,0.12)"],
+          [1, "rgba(0,0,0,0.38)"],
+        ],
       },
-      // Thin accent line on top of band
+      // Frosted glass edge bar
       {
-        kind: "rect",
-        x: 0,
-        y: 640,
-        w: 800,
-        h: 3,
-        color: "#f97316",
+        kind: "roundRect",
+        x: 20,
+        y: 648,
+        w: 760,
+        h: 132,
+        radius: 18,
+        color: "rgba(255,255,255,0.52)",
+        stroke: "rgba(255,255,255,0.72)",
+        strokeWidth: 1.5,
       },
     ],
     title: {
-      x: SAFE_MARGIN,
-      y: 656,
+      x: 44,
+      y: 666,
       maxWidth: 520,
-      fontSize: 34,
-      lineHeight: 40,
+      fontSize: 30,
+      lineHeight: 36,
       align: "left",
-      color: "#ffffff",
+      color: "#0f172a",
       shadow: false,
       weight: 800,
     },
+    titleMode: "plain",
     points: {
-      x: SAFE_MARGIN,
-      y: 706,
-      maxWidth: 700,
-      fontSize: 20,
-      lineHeight: 24,
-      gap: 10,
+      x: 44,
+      y: 712,
+      maxWidth: 712,
+      fontSize: 18,
+      lineHeight: 22,
+      gap: 8,
       align: "left",
-      color: "#f8fafc",
+      color: "#0f172a",
       shadow: false,
       style: "pills",
-      chipBg: "rgba(255,255,255,0.14)",
+      chipBg: "rgba(255,255,255,0.78)",
+      chipStroke: "rgba(255,255,255,0.95)",
       chipPaddingX: 12,
       chipPaddingY: 6,
-      chipRadius: 6,
+      chipRadius: 999,
       weight: 600,
-      maxItems: 4,
+      maxItems: 3,
     },
+    pointsFlow: "horizontal",
     badge: {
       x: 0,
       y: 0,
-      fontSize: 20,
-      paddingX: 14,
-      paddingY: 8,
+      fontSize: 18,
+      paddingX: 12,
+      paddingY: 7,
       bg: "#e11d48",
       color: "#ffffff",
       radius: 0,
@@ -157,67 +178,75 @@ export const LAYOUTS: LayoutPreset[] = [
     },
   },
   {
-    // Narrow info column + large product stage on the right
+    // Lifestyle: full-bleed scene + narrow frosted left edge strip
     id: "left-panel",
-    name: "左侧栏",
-    description: "窄信息栏 + 大图商品区，右上价签——适合竖构图/模特图",
-    imageFit: "contain-right",
-    canvasBg: "#f5f5f5",
-    leftGutter: 268,
+    name: "左边玻璃条",
+    description: "场景满幅，左侧窄玻璃条叠卖点——不裁切商品，适合竖向空间感",
+    imageFit: "cover-center",
     overlays: [
       {
-        kind: "rect",
+        kind: "gradient",
         x: 0,
         y: 0,
-        w: 268,
+        w: 320,
         h: 800,
-        color: "#111827",
+        direction: "right",
+        stops: [
+          [0, "rgba(15,23,42,0.42)"],
+          [0.7, "rgba(15,23,42,0.12)"],
+          [1, "rgba(15,23,42,0)"],
+        ],
       },
-      // Slim brand accent at top of panel
       {
-        kind: "rect",
-        x: 0,
-        y: 0,
-        w: 268,
-        h: 6,
-        color: "#f97316",
+        kind: "roundRect",
+        x: 20,
+        y: 20,
+        w: 200,
+        h: 760,
+        radius: 20,
+        color: "rgba(15,23,42,0.48)",
+        stroke: "rgba(255,255,255,0.28)",
+        strokeWidth: 1.25,
       },
     ],
     title: {
-      x: 28,
-      y: 48,
-      maxWidth: 212,
-      fontSize: 30,
-      lineHeight: 38,
+      x: 40,
+      y: 56,
+      maxWidth: 160,
+      fontSize: 26,
+      lineHeight: 34,
       align: "left",
       color: "#ffffff",
-      shadow: false,
+      shadow: true,
       weight: 800,
     },
+    titleMode: "plain",
     points: {
-      x: 28,
+      x: 40,
       y: 200,
-      maxWidth: 212,
-      fontSize: 18,
-      lineHeight: 24,
-      gap: 12,
+      maxWidth: 160,
+      fontSize: 16,
+      lineHeight: 20,
+      gap: 10,
       align: "left",
-      color: "#f9fafb",
+      color: "#f8fafc",
       shadow: false,
-      style: "bars",
-      chipBg: "rgba(255,255,255,0.1)",
-      chipPaddingX: 12,
-      chipPaddingY: 10,
-      chipRadius: 6,
+      style: "pills",
+      chipBg: "rgba(255,255,255,0.16)",
+      chipStroke: "rgba(255,255,255,0.35)",
+      chipPaddingX: 10,
+      chipPaddingY: 8,
+      chipRadius: 12,
       weight: 600,
-      maxItems: 4,
+      maxItems: 3,
     },
+    pointsFlow: "vertical",
     badge: {
       x: 760,
       y: 36,
-      fontSize: 18,
-      paddingX: 14,
-      paddingY: 8,
+      fontSize: 17,
+      paddingX: 12,
+      paddingY: 7,
       bg: "#f59e0b",
       color: "#1c1917",
       radius: 4,
@@ -227,71 +256,73 @@ export const LAYOUTS: LayoutPreset[] = [
     },
   },
   {
-    // Product-first: floating chips only — no heavy gradients
+    // Lifestyle: floating glass capsules — scene almost untouched
     id: "corner-stack",
-    name: "胶囊叠层",
-    description: "商品满幅，标题胶囊 + 右下卖点叠层，角标飘带——适合深色/场景图",
+    name: "角叠胶囊",
+    description: "场景满幅，标题与卖点用玻璃胶囊角叠——适合深色/杂乱背景",
     imageFit: "cover-center",
     overlays: [
-      // Soft vignette only at edges — product stays clear
       {
         kind: "gradient",
         x: 0,
         y: 0,
         w: 800,
-        h: 100,
+        h: 140,
         direction: "down",
         stops: [
-          [0, "rgba(0,0,0,0.28)"],
+          [0, "rgba(0,0,0,0.22)"],
           [1, "rgba(0,0,0,0)"],
         ],
       },
       {
         kind: "gradient",
-        x: 0,
-        y: 700,
-        w: 800,
-        h: 100,
-        direction: "up",
+        x: 480,
+        y: 480,
+        w: 320,
+        h: 320,
+        direction: "left",
         stops: [
           [0, "rgba(0,0,0,0)"],
-          [1, "rgba(0,0,0,0.22)"],
+          [1, "rgba(0,0,0,0.18)"],
         ],
       },
     ],
     title: {
       x: SAFE_MARGIN,
-      y: 44,
-      maxWidth: 520,
-      fontSize: 32,
-      lineHeight: 38,
+      y: 48,
+      maxWidth: 420,
+      fontSize: 28,
+      lineHeight: 34,
       align: "left",
       color: "#0f172a",
       shadow: false,
       weight: 800,
     },
+    titleMode: "capsule",
     points: {
-      x: 752,
-      y: 520,
-      maxWidth: 280,
-      fontSize: 18,
-      lineHeight: 22,
-      gap: 10,
+      x: 760,
+      y: 540,
+      maxWidth: 260,
+      fontSize: 17,
+      lineHeight: 20,
+      gap: 8,
       align: "right",
       color: "#0f172a",
       shadow: false,
       style: "pills",
-      chipBg: "rgba(255,255,255,0.94)",
+      chipBg: "rgba(255,255,255,0.72)",
+      chipStroke: "rgba(255,255,255,0.95)",
       chipPaddingX: 14,
       chipPaddingY: 8,
       chipRadius: 999,
       weight: 700,
-      maxItems: 4,
+      maxItems: 3,
     },
+    pointsFlow: "vertical",
     badge: {
       x: 0,
       y: 0,
-      fontSize: 18,
+      fontSize: 17,
       paddingX: 12,
       paddingY: 7,
       bg: "#2563eb",

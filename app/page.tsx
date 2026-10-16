@@ -79,7 +79,7 @@ export default function Home() {
   }, [error]);
 
   const validationMessage = useMemo(() => {
-    if (!file) return "请先上传商品图";
+    if (!file) return "请先上传场景图";
     if (!productName.trim()) return "请填写产品名";
     if (filledPoints.length < MIN_POINTS) {
       return `请至少填写 ${MIN_POINTS} 条卖点（当前 ${filledPoints.length} 条）`;
@@ -152,7 +152,7 @@ export default function Home() {
       setBadgeText(DEMO_BADGE);
       const demoFile = await loadDemoImageFile();
       await onFileChange(demoFile);
-      setHint("已填入示例文案与示例图，可直接点「生成 3 版预览」");
+      setHint("已填入示例短卖点与场景图，可直接点「生成 3 版预览」");
     } catch (e) {
       setError(e instanceof Error ? e.message : "示例加载失败");
     } finally {
@@ -286,7 +286,7 @@ export default function Home() {
           <div>
             <h1 className="header-title">主图卖点卡</h1>
             <p className="header-sub">
-              上传商品图，填卖点，生成 3 版布局并导出 PNG
+              上传场景图，填短卖点，生成 3 版叠层主图并导出 PNG
             </p>
           </div>
           <span className="platform-pill">{PLATFORM_LABEL}</span>
@@ -305,13 +305,13 @@ export default function Home() {
               {demoBusy ? "加载示例…" : "填入示例"}
             </button>
             <p className="demo-hint">
-              一键填入示例文案与示例商品图，可直接生成；也可再换成自己的图
+              一键填入短卖点与示例场景图，可直接生成；也可再换成自己的场景图
             </p>
           </div>
 
           <div className="field">
             <label htmlFor="product-image" className="field-label">
-              商品图 <span className="req">必填</span>
+              场景图 <span className="req">必填</span>
             </label>
             <div
               className={`dropzone ${dragOver ? "dropzone-active" : ""} ${previewUrl ? "dropzone-filled" : ""}`}
@@ -324,7 +324,7 @@ export default function Home() {
               onClick={() => fileInputRef.current?.click()}
               role="button"
               tabIndex={0}
-              aria-label="上传商品图"
+              aria-label="上传场景图"
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
@@ -361,7 +361,7 @@ export default function Home() {
               )}
             </div>
             {!file && (
-              <p className="field-help">没有商品图无法生成主图卖点卡</p>
+              <p className="field-help">没有场景图无法生成主图卖点卡</p>
             )}
           </div>
 
@@ -377,7 +377,7 @@ export default function Home() {
                 setProductName(e.target.value);
                 setExportOk(false);
               }}
-              placeholder="例如：轻薄羽绒服"
+              placeholder="例如：白橡餐桌"
               className="input"
               maxLength={40}
             />
@@ -417,7 +417,7 @@ export default function Home() {
                     type="text"
                     value={p}
                     onChange={(e) => updatePoint(i, e.target.value)}
-                    placeholder={`卖点 ${i + 1}，如：90 绒填充`}
+                    placeholder={`卖点 ${i + 1}，如：榫卯`}
                     className="input"
                     maxLength={24}
                     aria-label={`卖点 ${i + 1}`}
@@ -455,7 +455,7 @@ export default function Home() {
                 setBadgeText(e.target.value);
                 setExportOk(false);
               }}
-              placeholder="例如：限时满减"
+              placeholder="例如：满减"
               className="input"
               maxLength={12}
             />
@@ -518,7 +518,7 @@ export default function Home() {
             <div className="empty-state">
               <ol className="empty-steps">
                 <li className={file ? "done" : ""}>
-                  上传商品图（或点「填入示例」）
+                  上传场景图（或点「填入示例」）
                 </li>
                 <li className={productName.trim() ? "done" : ""}>填写产品名</li>
                 <li className={filledPoints.length >= MIN_POINTS ? "done" : ""}>
