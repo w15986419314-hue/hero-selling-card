@@ -1,12 +1,12 @@
-/** Demo form values for one-click try-out (furniture / ecommerce visual). */
+/** Demo form values for one-click try-out (short copy fits card chips). */
 
-export const DEMO_PRODUCT_NAME = "北欧白橡实木餐桌";
+export const DEMO_PRODUCT_NAME = "白橡实木餐桌";
 
 export const DEMO_POINTS = [
-  "原木榫卯结构",
-  "1.4m 四人位",
-  "水性漆无异味",
-  "可拆卸桌脚",
+  "榫卯结构",
+  "1.4m四人",
+  "水性无味漆",
+  "可拆桌脚",
 ];
 
 export const DEMO_BADGE = "限时满减";
