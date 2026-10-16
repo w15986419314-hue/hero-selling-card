@@ -7,8 +7,15 @@ import {
   composeCard,
   downloadPng,
   loadImageFromFile,
+  sanitizeExportFilename,
 } from "@/lib/compose";
 import { templateRewrite } from "@/lib/copy";
+import {
+  DEMO_BADGE,
+  DEMO_POINTS,
+  DEMO_PRODUCT_NAME,
+  loadDemoImageFile,
+} from "@/lib/demo";
 
 type Preview = {
   id: LayoutId;
@@ -30,6 +37,7 @@ export default function Home() {
   const [previews, setPreviews] = useState<Preview[]>([]);
   const [selected, setSelected] = useState<LayoutId | null>(null);
   const [busy, setBusy] = useState(false);
+  const [demoBusy, setDemoBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hint, setHint] = useState<string | null>(null);
   const [exportOk, setExportOk] = useState(false);
@@ -59,6 +67,16 @@ export default function Home() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && error) {
+        setError(null);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [error]);
 
   const validationMessage = useMemo(() => {
     if (!file) return "请先上传商品图";
@@ -122,6 +140,24 @@ export default function Home() {
       return;
     }
     setPoints((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const fillDemo = async () => {
+    setError(null);
+    setExportOk(false);
+    setDemoBusy(true);
+    try {
+      setProductName(DEMO_PRODUCT_NAME);
+      setPoints([...DEMO_POINTS]);
+      setBadgeText(DEMO_BADGE);
+      const demoFile = await loadDemoImageFile();
+      await onFileChange(demoFile);
+      setHint("已填入示例文案与示例图，可直接点「生成 3 版预览」");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "示例加载失败");
+    } finally {
+      setDemoBusy(false);
+    }
   };
 
   const handleGenerate = async () => {
@@ -220,9 +256,10 @@ export default function Home() {
       setError("请先生成并选择一版预览");
       return;
     }
-    const safe =
-      (productName.trim() || "hero-card").replace(/[\\/:*?"<>|]/g, "_") +
-      `-${item.id}.png`;
+    const safe = sanitizeExportFilename(
+      productName.trim() || "商品",
+      item.name,
+    );
     try {
       downloadPng(item.dataUrl, safe);
       setExportOk(true);
@@ -258,8 +295,22 @@ export default function Home() {
 
       <main className="app-main">
         <section className="panel form-panel">
+          <div className="demo-row">
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => void fillDemo()}
+              disabled={busy || demoBusy}
+            >
+              {demoBusy ? "加载示例…" : "填入示例"}
+            </button>
+            <p className="demo-hint">
+              一键填入示例文案与示例商品图，可直接生成；也可再换成自己的图
+            </p>
+          </div>
+
           <div className="field">
-            <label className="field-label">
+            <label htmlFor="product-image" className="field-label">
               商品图 <span className="req">必填</span>
             </label>
             <div
@@ -273,6 +324,7 @@ export default function Home() {
               onClick={() => fileInputRef.current?.click()}
               role="button"
               tabIndex={0}
+              aria-label="上传商品图"
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
@@ -281,9 +333,10 @@ export default function Home() {
               }}
             >
               <input
+                id="product-image"
                 ref={fileInputRef}
                 type="file"
-                accept="image/jpeg,image/png,image/webp,image/jpg"
+                accept="image/jpeg,image/png,image/webp,image/jpg,image/svg+xml"
                 className="sr-only"
                 onChange={(e) => onFileChange(e.target.files?.[0] ?? null)}
               />
@@ -331,15 +384,19 @@ export default function Home() {
           </div>
 
           <div className="field">
-            <label className="field-label">平台尺寸</label>
-            <div className="input input-disabled">{PLATFORM_LABEL}</div>
+            <label htmlFor="platform" className="field-label">
+              平台尺寸
+            </label>
+            <div id="platform" className="input input-disabled" aria-disabled="true">
+              {PLATFORM_LABEL}
+            </div>
           </div>
 
           <div className="field">
             <div className="field-row">
-              <label className="field-label">
+              <span className="field-label" id="points-label">
                 卖点 <span className="req">3–5 条</span>
-              </label>
+              </span>
               <button
                 type="button"
                 onClick={addPoint}
@@ -349,17 +406,21 @@ export default function Home() {
                 + 添加
               </button>
             </div>
-            <div className="points-list">
+            <div className="points-list" role="group" aria-labelledby="points-label">
               {points.map((p, i) => (
                 <div key={i} className="point-row">
-                  <span className="point-idx">{i + 1}</span>
+                  <label htmlFor={`point-${i}`} className="point-idx">
+                    {i + 1}
+                  </label>
                   <input
+                    id={`point-${i}`}
                     type="text"
                     value={p}
                     onChange={(e) => updatePoint(i, e.target.value)}
                     placeholder={`卖点 ${i + 1}，如：90 绒填充`}
                     className="input"
                     maxLength={24}
+                    aria-label={`卖点 ${i + 1}`}
                   />
                   <button
                     type="button"
@@ -403,6 +464,7 @@ export default function Home() {
           {error && (
             <p role="alert" className="banner banner-error">
               {error}
+              <span className="banner-esc"> · Esc 关闭</span>
             </p>
           )}
           {!error && hint && (
@@ -437,7 +499,7 @@ export default function Home() {
           )}
         </section>
 
-        <section className="panel preview-panel">
+        <section className="panel preview-panel" aria-label="预览区">
           <div className="preview-head">
             <h2 className="preview-title">预览</h2>
             {copySource && (
@@ -455,7 +517,9 @@ export default function Home() {
           ) : previews.length === 0 ? (
             <div className="empty-state">
               <ol className="empty-steps">
-                <li className={file ? "done" : ""}>上传商品图</li>
+                <li className={file ? "done" : ""}>
+                  上传商品图（或点「填入示例」）
+                </li>
                 <li className={productName.trim() ? "done" : ""}>填写产品名</li>
                 <li className={filledPoints.length >= MIN_POINTS ? "done" : ""}>
                   填写至少 3 条卖点
@@ -464,19 +528,21 @@ export default function Home() {
               </ol>
             </div>
           ) : (
-            <div className="preview-list">
+            <div className="preview-list" role="list">
               {previews.map((p) => {
                 const active = selected === p.id;
                 return (
                   <button
                     key={p.id}
                     type="button"
+                    role="listitem"
                     onClick={() => {
                       setSelected(p.id);
                       setExportOk(false);
                       setHint(`已选中「${p.name}」，可导出 PNG`);
                     }}
                     className={`preview-card ${active ? "preview-card-active" : ""}`}
+                    aria-pressed={active}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img

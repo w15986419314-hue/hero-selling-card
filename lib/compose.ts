@@ -346,6 +346,23 @@ export function canvasToPngDataUrl(canvas: HTMLCanvasElement): string {
   return canvas.toDataURL("image/png");
 }
 
+/** Safe download name: `{productName}-卖点卡-{layout}.png` */
+export function sanitizeExportFilename(
+  productName: string,
+  layoutLabel: string,
+): string {
+  const clean = (s: string, fallback: string) => {
+    const t = s
+      .trim()
+      .replace(/[\\/:*?"<>|\u0000-\u001f]/g, "_")
+      .replace(/\s+/g, " ")
+      .replace(/\.+$/g, "")
+      .slice(0, 48);
+    return t || fallback;
+  };
+  return `${clean(productName, "商品")}-卖点卡-${clean(layoutLabel, "布局")}.png`;
+}
+
 export function downloadPng(dataUrl: string, filename: string) {
   const a = document.createElement("a");
   a.href = dataUrl;
