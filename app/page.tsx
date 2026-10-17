@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CANVAS_SIZE, LAYOUTS, type LayoutId } from "@/lib/layouts";
+import { LAYOUTS, type LayoutId } from "@/lib/layouts";
 import {
   composeCard,
   downloadPng,
@@ -16,6 +16,12 @@ import {
   loadDemoImageFile,
   type DemoSceneId,
 } from "@/lib/demo";
+import {
+  DEFAULT_PLATFORM_ID,
+  getPlatform,
+  PLATFORMS,
+  type PlatformId,
+} from "@/lib/platforms";
 
 type Preview = {
   id: LayoutId;
@@ -24,7 +30,6 @@ type Preview = {
   dataUrl: string;
 };
 
-const PLATFORM_LABEL = "淘宝 800×800";
 const MIN_POINTS = 3;
 const MAX_POINTS = 5;
 
@@ -43,6 +48,9 @@ export default function Home() {
   const [exportOk, setExportOk] = useState(false);
   const [copySource, setCopySource] = useState<"llm" | "template" | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [platformId, setPlatformId] = useState<PlatformId>(DEFAULT_PLATFORM_ID);
+  const platform = useMemo(() => getPlatform(platformId), [platformId]);
+  const canvasSize = platform.width;
   const exportTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -230,6 +238,7 @@ export default function Home() {
           points: pts,
           badgeText: badge,
           layout,
+          size: canvasSize,
         });
         return {
           id: layout.id,
@@ -262,12 +271,14 @@ export default function Home() {
     const safe = sanitizeExportFilename(
       productName.trim() || "商品",
       item.name,
+      platform.slug,
+      canvasSize,
     );
     try {
-      const png = await exportPngFromDataUrl(item.dataUrl);
+      const png = await exportPngFromDataUrl(item.dataUrl, canvasSize);
       downloadPng(png, safe);
       setExportOk(true);
-      setHint(`已导出 ${CANVAS_SIZE}×${CANVAS_SIZE}：${safe}`);
+      setHint(`已导出 ${canvasSize}×${canvasSize}：${safe}`);
       if (exportTimer.current) clearTimeout(exportTimer.current);
       exportTimer.current = setTimeout(() => setExportOk(false), 2500);
     } catch {
@@ -293,7 +304,7 @@ export default function Home() {
               场景图 + 短卖点（每条≤6字）→ 三版主图预览 → 导出 PNG
             </p>
           </div>
-          <span className="platform-pill">{PLATFORM_LABEL}</span>
+          <span className="platform-pill">{platform.label}</span>
         </div>
       </header>
 
@@ -401,9 +412,28 @@ export default function Home() {
             <label htmlFor="platform" className="field-label">
               平台尺寸
             </label>
-            <div id="platform" className="input input-disabled" aria-disabled="true">
-              {PLATFORM_LABEL}
-            </div>
+            <select
+              id="platform"
+              className="input"
+              value={platformId}
+              onChange={(e) => {
+                const next = e.target.value as PlatformId;
+                setPlatformId(next);
+                setExportOk(false);
+                setPreviews([]);
+                setSelected(null);
+                const p = getPlatform(next);
+                setHint(
+                  `已切换到 ${p.label}，请重新点「生成 3 版预览」`,
+                );
+              }}
+            >
+              {PLATFORMS.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="field">
@@ -590,7 +620,7 @@ export default function Home() {
             {exportOk ? "已导出 ✓" : "导出 PNG"}
           </button>
           <p className="btn-hint export-size-hint">
-            导出尺寸固定 {CANVAS_SIZE}×{CANVAS_SIZE} PNG（淘宝主图）
+            导出尺寸 {canvasSize}×{canvasSize} PNG（{platform.label}）
           </p>
           {previews.length > 0 && !selected && (
             <p className="btn-hint">请先点选一版预览</p>

@@ -1,7 +1,8 @@
-/** Browser Canvas helpers — scene-first 800×800 Taobao hero (thin edge chips only). */
+/** Browser Canvas helpers — scene-first square hero (thin edge chips only). */
 
 import {
-  CANVAS_SIZE,
+  LAYOUT_BASE_SIZE,
+  scaleLayout,
   type BadgeStyle,
   type LayoutPreset,
   type OverlaySpec,
@@ -15,6 +16,8 @@ export interface ComposeInput {
   points: string[];
   badgeText?: string;
   layout: LayoutPreset;
+  /** Square canvas edge in px (800 / 1080 / 2000). Defaults to layout base 800. */
+  size?: number;
 }
 
 const FONT_STACK =
@@ -46,7 +49,7 @@ function drawContainRight(
   const areaH = size;
   const iw = img.naturalWidth || img.width;
   const ih = img.naturalHeight || img.height;
-  const pad = 20;
+  const pad = 20 * (size / LAYOUT_BASE_SIZE);
   const scale = Math.min((areaW - pad * 2) / iw, (areaH - pad * 2) / ih);
   const dw = iw * scale;
   const dh = ih * scale;
@@ -65,7 +68,7 @@ function drawContainCenter(
 ) {
   const iw = img.naturalWidth || img.width;
   const ih = img.naturalHeight || img.height;
-  const pad = 40;
+  const pad = 40 * (size / LAYOUT_BASE_SIZE);
   const scale = Math.min((size - pad * 2) / iw, (size - pad * 2) / ih);
   const dw = iw * scale;
   const dh = ih * scale;
@@ -366,8 +369,10 @@ function drawPoints(
     } else {
       // bars: frosted row + warm accent
       drawGlassChip(ctx, chipX, y, chipW, chipH, radius, chipBg, chipStroke);
+      const accent = Math.max(2, Math.round(3 * (block.fontSize / 17)));
+      const inset = Math.max(3, Math.round(5 * (block.fontSize / 17)));
       ctx.fillStyle = "#f97316";
-      ctx.fillRect(chipX, y + 5, 3, chipH - 10);
+      ctx.fillRect(chipX, y + inset, accent, chipH - inset * 2);
     }
 
     ctx.fillStyle = block.color;
@@ -385,9 +390,12 @@ function drawCornerRibbon(
   ctx: CanvasRenderingContext2D,
   text: string,
   badge: BadgeStyle,
+  canvasSize: number,
 ) {
   const corner = badge.corner ?? "top-left";
-  const reach = 158;
+  const factor = canvasSize / LAYOUT_BASE_SIZE;
+  const reach = 158 * factor;
+  const pivot = 48 * factor;
 
   ctx.save();
   ctx.font = `700 ${badge.fontSize}px ${FONT_STACK}`;
@@ -398,9 +406,9 @@ function drawCornerRibbon(
     ctx.lineTo(reach, 0);
     ctx.lineTo(0, reach);
   } else {
-    ctx.moveTo(CANVAS_SIZE, 0);
-    ctx.lineTo(CANVAS_SIZE - reach, 0);
-    ctx.lineTo(CANVAS_SIZE, reach);
+    ctx.moveTo(canvasSize, 0);
+    ctx.lineTo(canvasSize - reach, 0);
+    ctx.lineTo(canvasSize, reach);
   }
   ctx.closePath();
   ctx.fillStyle = badge.bg;
@@ -412,9 +420,9 @@ function drawCornerRibbon(
     ctx.lineTo(reach, 0);
     ctx.lineTo(reach * 0.55, reach * 0.45);
   } else {
-    ctx.moveTo(CANVAS_SIZE - reach * 0.55, 0);
-    ctx.lineTo(CANVAS_SIZE - reach, 0);
-    ctx.lineTo(CANVAS_SIZE - reach * 0.55, reach * 0.45);
+    ctx.moveTo(canvasSize - reach * 0.55, 0);
+    ctx.lineTo(canvasSize - reach, 0);
+    ctx.lineTo(canvasSize - reach * 0.55, reach * 0.45);
   }
   ctx.closePath();
   ctx.fillStyle = "rgba(0,0,0,0.18)";
@@ -427,10 +435,10 @@ function drawCornerRibbon(
   const label = rchars.length > 4 ? rchars.slice(0, 4).join("") : text;
 
   if (corner === "top-left") {
-    ctx.translate(48, 48);
+    ctx.translate(pivot, pivot);
     ctx.rotate(-Math.PI / 4);
   } else {
-    ctx.translate(CANVAS_SIZE - 48, 48);
+    ctx.translate(canvasSize - pivot, pivot);
     ctx.rotate(Math.PI / 4);
   }
   ctx.fillText(label, 0, 0);
@@ -442,12 +450,15 @@ function drawPriceTag(
   ctx: CanvasRenderingContext2D,
   text: string,
   badge: BadgeStyle,
+  canvasSize: number,
 ) {
+  const factor = canvasSize / LAYOUT_BASE_SIZE;
+  const margin = 16 * factor;
   ctx.font = `700 ${badge.fontSize}px ${FONT_STACK}`;
   const chars = Array.from(text);
   const label = chars.length > 4 ? chars.slice(0, 4).join("") : text;
   const tw = ctx.measureText(label).width;
-  const notch = 14;
+  const notch = 14 * factor;
   const w = tw + badge.paddingX * 2 + notch;
   const h = badge.fontSize + badge.paddingY * 2;
 
@@ -455,13 +466,13 @@ function drawPriceTag(
   if (badge.anchor === "right") {
     x = badge.x - w;
   }
-  x = Math.max(16, Math.min(x, CANVAS_SIZE - w - 16));
-  const y = Math.max(16, Math.min(badge.y, CANVAS_SIZE - h - 16));
+  x = Math.max(margin, Math.min(x, canvasSize - w - margin));
+  const y = Math.max(margin, Math.min(badge.y, canvasSize - h - margin));
 
   ctx.save();
   ctx.shadowColor = "rgba(0,0,0,0.2)";
-  ctx.shadowBlur = 6;
-  ctx.shadowOffsetY = 2;
+  ctx.shadowBlur = 6 * factor;
+  ctx.shadowOffsetY = 2 * factor;
   ctx.beginPath();
   if (badge.anchor === "right") {
     ctx.moveTo(x, y);
@@ -483,9 +494,9 @@ function drawPriceTag(
 
   ctx.fillStyle = "rgba(255,255,255,0.85)";
   const eyeX =
-    badge.anchor === "right" ? x + w - notch / 2 - 2 : x + notch / 2 + 2;
+    badge.anchor === "right" ? x + w - notch / 2 - 2 * factor : x + notch / 2 + 2 * factor;
   ctx.beginPath();
-  ctx.arc(eyeX, y + h / 2, 3.5, 0, Math.PI * 2);
+  ctx.arc(eyeX, y + h / 2, 3.5 * factor, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.fillStyle = badge.color;
@@ -501,7 +512,10 @@ function drawPillBadge(
   ctx: CanvasRenderingContext2D,
   text: string,
   badge: BadgeStyle,
+  canvasSize: number,
 ) {
+  const factor = canvasSize / LAYOUT_BASE_SIZE;
+  const margin = 16 * factor;
   ctx.font = `700 ${badge.fontSize}px ${FONT_STACK}`;
   const chars = Array.from(text);
   const label = chars.length > 4 ? chars.slice(0, 4).join("") : text;
@@ -509,13 +523,13 @@ function drawPillBadge(
   const h = badge.fontSize + badge.paddingY * 2;
   let x = badge.x;
   if (badge.anchor === "right") x = badge.x - w;
-  x = Math.max(16, Math.min(x, CANVAS_SIZE - w - 16));
-  const y = Math.max(16, Math.min(badge.y, CANVAS_SIZE - h - 16));
+  x = Math.max(margin, Math.min(x, canvasSize - w - margin));
+  const y = Math.max(margin, Math.min(badge.y, canvasSize - h - margin));
 
   ctx.save();
   ctx.shadowColor = "rgba(0,0,0,0.2)";
-  ctx.shadowBlur = 5;
-  ctx.shadowOffsetY = 2;
+  ctx.shadowBlur = 5 * factor;
+  ctx.shadowOffsetY = 2 * factor;
   ctx.fillStyle = badge.bg;
   roundRectPath(ctx, x, y, w, h, badge.radius || 999);
   ctx.fill();
@@ -532,25 +546,28 @@ function drawBadge(
   ctx: CanvasRenderingContext2D,
   text: string,
   layout: LayoutPreset,
+  canvasSize: number,
 ) {
   const b = layout.badge;
   if (b.shape === "ribbon") {
-    drawCornerRibbon(ctx, text, b);
+    drawCornerRibbon(ctx, text, b, canvasSize);
   } else if (b.shape === "tag") {
-    drawPriceTag(ctx, text, b);
+    drawPriceTag(ctx, text, b, canvasSize);
   } else {
-    drawPillBadge(ctx, text, b);
+    drawPillBadge(ctx, text, b, canvasSize);
   }
 }
 
 export function composeCard(input: ComposeInput): HTMLCanvasElement {
+  const size = input.size ?? LAYOUT_BASE_SIZE;
+  const layout = scaleLayout(input.layout, size);
   const canvas = document.createElement("canvas");
-  canvas.width = CANVAS_SIZE;
-  canvas.height = CANVAS_SIZE;
+  canvas.width = size;
+  canvas.height = size;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas 不可用");
 
-  const { image, productName, points, badgeText, layout } = input;
+  const { image, productName, points, badgeText } = input;
   const bg = layout.canvasBg ?? "#f5f5f5";
 
   // Lifestyle default: cover the full scene. Contain modes kept for rare catalog use.
@@ -558,14 +575,14 @@ export function composeCard(input: ComposeInput): HTMLCanvasElement {
     drawContainRight(
       ctx,
       image,
-      CANVAS_SIZE,
-      layout.leftGutter ?? 268,
+      size,
+      layout.leftGutter ?? 268 * (size / LAYOUT_BASE_SIZE),
       bg,
     );
   } else if (layout.imageFit === "contain-center") {
-    drawContainCenter(ctx, image, CANVAS_SIZE, bg);
+    drawContainCenter(ctx, image, size, bg);
   } else {
-    drawCover(ctx, image, CANVAS_SIZE);
+    drawCover(ctx, image, size);
   }
 
   for (const o of layout.overlays ?? []) {
@@ -583,7 +600,7 @@ export function composeCard(input: ComposeInput): HTMLCanvasElement {
 
   const badge = badgeText?.trim();
   if (badge) {
-    drawBadge(ctx, badge, layout);
+    drawBadge(ctx, badge, layout, size);
   }
 
   return canvas;
@@ -594,17 +611,18 @@ export function canvasToPngDataUrl(canvas: HTMLCanvasElement): string {
 }
 
 /**
- * Draw source onto a fresh CANVAS_SIZE×CANVAS_SIZE canvas and return PNG data URL.
- * Guarantees export pixels are exactly 800×800.
+ * Draw source onto a fresh targetSize×targetSize canvas and return PNG data URL.
+ * Guarantees export pixels are exactly the requested square size.
  */
 export function rasterizeToFixedPng(
   source: CanvasImageSource,
+  targetSize: number,
   srcW?: number,
   srcH?: number,
 ): string {
   const out = document.createElement("canvas");
-  out.width = CANVAS_SIZE;
-  out.height = CANVAS_SIZE;
+  out.width = targetSize;
+  out.height = targetSize;
   const ctx = out.getContext("2d");
   if (!ctx) throw new Error("Canvas 不可用");
 
@@ -614,41 +632,44 @@ export function rasterizeToFixedPng(
       ? source.width
       : source instanceof HTMLImageElement
         ? source.naturalWidth || source.width
-        : CANVAS_SIZE);
+        : targetSize);
   const h =
     srcH ??
     (source instanceof HTMLCanvasElement
       ? source.height
       : source instanceof HTMLImageElement
         ? source.naturalHeight || source.height
-        : CANVAS_SIZE);
+        : targetSize);
 
-  if (w === CANVAS_SIZE && h === CANVAS_SIZE) {
+  if (w === targetSize && h === targetSize) {
     ctx.drawImage(source, 0, 0);
   } else {
-    const scale = Math.max(CANVAS_SIZE / w, CANVAS_SIZE / h);
+    const scale = Math.max(targetSize / w, targetSize / h);
     const dw = w * scale;
     const dh = h * scale;
-    const dx = (CANVAS_SIZE - dw) / 2;
-    const dy = (CANVAS_SIZE - dh) / 2;
+    const dx = (targetSize - dw) / 2;
+    const dy = (targetSize - dh) / 2;
     ctx.drawImage(source, dx, dy, dw, dh);
   }
 
   return out.toDataURL("image/png");
 }
 
-/** Compose result → PNG data URL, always 800×800. */
+/** Compose result → PNG data URL at the canvas's native square size. */
 export function exportPngDataUrl(canvas: HTMLCanvasElement): string {
-  return rasterizeToFixedPng(canvas);
+  return rasterizeToFixedPng(canvas, canvas.width);
 }
 
-/** Re-export a preview data URL as a guaranteed 800×800 PNG. */
-export function exportPngFromDataUrl(dataUrl: string): Promise<string> {
+/** Re-export a preview data URL as a guaranteed square PNG at targetSize. */
+export function exportPngFromDataUrl(
+  dataUrl: string,
+  targetSize: number,
+): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
       try {
-        resolve(rasterizeToFixedPng(img));
+        resolve(rasterizeToFixedPng(img, targetSize));
       } catch (e) {
         reject(e);
       }
@@ -658,10 +679,12 @@ export function exportPngFromDataUrl(dataUrl: string): Promise<string> {
   });
 }
 
-/** Safe download name: `{productName}-卖点卡-{layout}.png` */
+/** Safe download name: `{productName}-{layout}-{slug}-{size}.png` */
 export function sanitizeExportFilename(
   productName: string,
   layoutLabel: string,
+  platformSlug: string,
+  size: number,
 ): string {
   const clean = (s: string, fallback: string) => {
     const t = s
@@ -672,7 +695,8 @@ export function sanitizeExportFilename(
       .slice(0, 48);
     return t || fallback;
   };
-  return `${clean(productName, "商品")}-卖点卡-${clean(layoutLabel, "布局")}.png`;
+  const slug = clean(platformSlug, "taobao");
+  return `${clean(productName, "商品")}-${clean(layoutLabel, "布局")}-${slug}-${size}.png`;
 }
 
 export function downloadPng(dataUrl: string, filename: string) {

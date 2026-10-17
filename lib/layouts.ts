@@ -300,3 +300,116 @@ export function getLayout(id: LayoutId): LayoutPreset {
   if (!found) throw new Error(`Unknown layout: ${id}`);
   return found;
 }
+
+/** Authoring base — all LAYOUTS coords are relative to this edge. */
+export const LAYOUT_BASE_SIZE = 800;
+
+function scaleNum(v: number, factor: number): number {
+  return v * factor;
+}
+
+function scaleOverlay(o: OverlaySpec, factor: number): OverlaySpec {
+  if (o.kind === "rect") {
+    return {
+      ...o,
+      x: scaleNum(o.x, factor),
+      y: scaleNum(o.y, factor),
+      w: scaleNum(o.w, factor),
+      h: scaleNum(o.h, factor),
+    };
+  }
+  if (o.kind === "gradient") {
+    return {
+      ...o,
+      x: scaleNum(o.x, factor),
+      y: scaleNum(o.y, factor),
+      w: scaleNum(o.w, factor),
+      h: scaleNum(o.h, factor),
+      stops: o.stops.map(([offset, color]) => [offset, color]),
+    };
+  }
+  return {
+    ...o,
+    x: scaleNum(o.x, factor),
+    y: scaleNum(o.y, factor),
+    w: scaleNum(o.w, factor),
+    h: scaleNum(o.h, factor),
+    radius: scaleNum(o.radius, factor),
+    strokeWidth:
+      o.strokeWidth !== undefined ? scaleNum(o.strokeWidth, factor) : undefined,
+  };
+}
+
+function scaleTextBlock(block: TextBlock, factor: number): TextBlock {
+  return {
+    ...block,
+    x: scaleNum(block.x, factor),
+    y: scaleNum(block.y, factor),
+    maxWidth: scaleNum(block.maxWidth, factor),
+    fontSize: scaleNum(block.fontSize, factor),
+    lineHeight: scaleNum(block.lineHeight, factor),
+  };
+}
+
+function scalePointsBlock(block: PointsBlock, factor: number): PointsBlock {
+  return {
+    ...block,
+    ...scaleTextBlock(block, factor),
+    gap: scaleNum(block.gap, factor),
+    chipPaddingX:
+      block.chipPaddingX !== undefined
+        ? scaleNum(block.chipPaddingX, factor)
+        : undefined,
+    chipPaddingY:
+      block.chipPaddingY !== undefined
+        ? scaleNum(block.chipPaddingY, factor)
+        : undefined,
+    chipRadius:
+      block.chipRadius !== undefined
+        ? scaleNum(block.chipRadius, factor)
+        : undefined,
+  };
+}
+
+function scaleBadge(badge: BadgeStyle, factor: number): BadgeStyle {
+  return {
+    ...badge,
+    x: scaleNum(badge.x, factor),
+    y: scaleNum(badge.y, factor),
+    fontSize: scaleNum(badge.fontSize, factor),
+    paddingX: scaleNum(badge.paddingX, factor),
+    paddingY: scaleNum(badge.paddingY, factor),
+    radius: scaleNum(badge.radius, factor),
+  };
+}
+
+/**
+ * Deep-scale a layout authored at LAYOUT_BASE_SIZE (800) to a target square edge.
+ * Does not mutate the original preset.
+ */
+export function scaleLayout(
+  layout: LayoutPreset,
+  size: number,
+): LayoutPreset {
+  if (size === LAYOUT_BASE_SIZE) {
+    return {
+      ...layout,
+      overlays: layout.overlays?.map((o) => ({ ...o })),
+      title: { ...layout.title },
+      points: { ...layout.points },
+      badge: { ...layout.badge },
+    };
+  }
+  const factor = size / LAYOUT_BASE_SIZE;
+  return {
+    ...layout,
+    leftGutter:
+      layout.leftGutter !== undefined
+        ? scaleNum(layout.leftGutter, factor)
+        : undefined,
+    overlays: layout.overlays?.map((o) => scaleOverlay(o, factor)),
+    title: scaleTextBlock(layout.title, factor),
+    points: scalePointsBlock(layout.points, factor),
+    badge: scaleBadge(layout.badge, factor),
+  };
+}
