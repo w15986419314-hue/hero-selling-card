@@ -1,46 +1,37 @@
-# 主图卖点卡（Hero Selling Card）
+# 主图卖点卡
 
-上传一张场景图，填写产品名与短卖点，生成 3 版淘宝 800×800「场景图 + 卖点叠层」主图预览，并导出 PNG。
+上传一张场景图，填产品名与短卖点，生成 3 版淘宝 **800×800**「场景图 + 卖点叠层」主图，并导出 PNG。
 
-## 做什么
+**在线试用：** [hero-selling-card.vercel.app](https://hero-selling-card.vercel.app)
 
-- 上传 1 张场景/商品图（支持拖拽；按整幅场景满幅合成）
-- 填写产品名、3–5 条极短卖点（主图展示最多 3 条、每条≤6字）、可选促销角标
-- 平台尺寸固定为淘宝 **800×800**
-- 一键生成 **3 版**布局预览（浏览器 Canvas 合成）
-  - **底边筹码**：底边促销条 — 横排白筹码 + 小标题 + 左上价签
-  - **左边筹码**：左侧卖点列 — 竖排暖色描边筹码 + 右上琥珀标
-  - **浮层筹码**：右下浮层 — 深色玻璃筹码 + 左上丝带角标
-- 导出选中版为 **800×800 PNG**（文件名：`产品名-卖点卡-布局名.png`）
-- 可选服务端文案改写；未配置 API Key 时用本地模板润色，仍可出图
+![三版布局预览](public/readme-layouts.png)
 
-## 快速试用
+左起：底边筹码 · 左边筹码 · 浮层筹码
 
-本地跑起来后，点表单顶部的 **「填入示例」** 加载餐厅场景（`public/sample-product.jpg`），或点 **「换场景样图」** 加载客厅场景（`public/sample-product-2.jpg`）。都会填入对应短卖点，可直接「生成 3 版预览」；也可再换成自己的场景图。
+## 怎么用
 
-## 不做
+1. 打开线上地址，或本地 `npm run dev`
+2. 点 **填入示例**（餐厅）或 **换场景样图**（客厅），也可拖入自己的场景图
+3. 确认产品名、卖点（主图最多展示 3 条、每条 ≤6 字）、可选促销角标
+4. 点 **生成 3 版预览**，选一版 **导出 PNG**
 
-- 多 SKU 批量、账号登录、支付
-- 飞书 / 表格对接
-- 像素级结构保真、img2img
-- 第二平台尺寸（如抖音）
-- 复杂多页后台
-- 白底抠图目录式排版
+![操作界面](public/readme-ui.png)
 
-## 环境变量（可选）
+## 三版布局
 
-复制 `.env.example` 为 `.env.local`。不配置也能完整走通上传 → 生成 → 导出。
+| 布局 | 视觉重点 |
+|------|----------|
+| 底边筹码 | 底边促销条：横排白筹码 + 小标题 + 左上价签 |
+| 左边筹码 | 左侧卖点列：竖排暖色描边筹码 + 右上琥珀标 |
+| 浮层筹码 | 右下浮层：深色玻璃筹码 + 左上丝带角标 |
 
-| 变量 | 说明 |
-|------|------|
-| `DASHSCOPE_API_KEY` | 通义兼容模式 Key（优先） |
-| `DASHSCOPE_BASE_URL` | 默认 `https://dashscope.aliyuncs.com/compatible-mode/v1` |
-| `DASHSCOPE_MODEL` | 默认 `qwen-plus` |
-| `OPENAI_API_KEY` | 无 DashScope 时可用 |
-| `OPENAI_BASE_URL` | 默认 `https://api.openai.com/v1` |
-| `OPENAI_MODEL` | 默认 `gpt-4o-mini` |
+可选服务端文案改写；未配置 API Key 时用本地模板润色，仍可完整出图。
 
-密钥仅服务端使用，勿提交到 Git。
+## 范围
+
+**做：** 单图上传 → 三版 Canvas 合成 → 800×800 PNG 导出  
+
+**不做：** 多 SKU 批量、登录支付、飞书对接、像素级结构保真 / img2img、第二平台尺寸、白底抠图目录排版
 
 ## 本地运行
 
@@ -54,13 +45,28 @@ npm run dev
 生产构建：
 
 ```bash
-npm run build
-npm start
+npm run build && npm start
 ```
 
-## 部署（Vercel）
+## 环境变量（可选）
 
-1. 将本仓库推送到 GitHub
-2. 在 [Vercel](https://vercel.com) Import 该仓库
-3. Framework 选 Next.js，按需添加上述环境变量
-4. Deploy 后用公开 URL 走通：上传 → 填卖点 → 生成 → 导出 PNG
+复制 `.env.example` 为 `.env.local`。不配置也能走通：上传 → 生成 → 导出。
+
+| 变量 | 说明 |
+|------|------|
+| `DASHSCOPE_API_KEY` | 通义兼容模式 Key（优先） |
+| `DASHSCOPE_BASE_URL` | 默认 `https://dashscope.aliyuncs.com/compatible-mode/v1` |
+| `DASHSCOPE_MODEL` | 默认 `qwen-plus` |
+| `OPENAI_API_KEY` | 无 DashScope 时可用 |
+| `OPENAI_BASE_URL` | 默认 `https://api.openai.com/v1` |
+| `OPENAI_MODEL` | 默认 `gpt-4o-mini` |
+
+密钥仅服务端使用，勿提交到 Git。
+
+## 部署
+
+本仓库已关联 Vercel 项目 **hero-selling-card**，推送到 `main` 即自动发版。
+
+公开地址：[https://hero-selling-card.vercel.app](https://hero-selling-card.vercel.app)
+
+若从零新建：在 Vercel Import 本仓库 → Framework 选 Next.js → 按需加环境变量 → Deploy。
