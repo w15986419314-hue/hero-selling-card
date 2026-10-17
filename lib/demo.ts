@@ -16,11 +16,11 @@ export const DEMO_SCENES: Record<DemoSceneId, DemoScene> = {
   dining: {
     id: "dining",
     productName: "白橡餐桌",
-    points: ["原木榫卯", "1.4米", "环保漆"],
+    points: ["原木榫卯", "1.4米", "环保漆面"],
     badge: "满减",
     imagePath: "/sample-product.jpg",
     fileName: "sample-scene.jpg",
-    label: "餐厅场景",
+    label: "餐厅示例",
   },
   living: {
     id: "living",
@@ -29,7 +29,7 @@ export const DEMO_SCENES: Record<DemoSceneId, DemoScene> = {
     badge: "爆款",
     imagePath: "/sample-product-2.jpg",
     fileName: "sample-scene-2.jpg",
-    label: "客厅场景",
+    label: "客厅示例",
   },
 };
 

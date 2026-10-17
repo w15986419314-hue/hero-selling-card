@@ -11,6 +11,8 @@ function stripNoise(s: string): string {
 export function polishPoint(raw: string, _index: number): string {
   let t = stripNoise(raw);
   if (!t) return "";
+  // Keep size chips like「1.4米」intact when already short.
+  if (/\d/.test(t) && Array.from(t).length <= 6) return t;
   const chars = Array.from(t);
   if (chars.length > 6) t = chars.slice(0, 6).join("");
   return t;

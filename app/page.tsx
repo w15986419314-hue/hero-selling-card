@@ -154,7 +154,7 @@ export default function Home() {
       const demoFile = await loadDemoImageFile(sceneId);
       await onFileChange(demoFile);
       setHint(
-        `已填入「${scene.label}」短卖点与场景图，可直接点「生成 3 版预览」`,
+        `已填入「${scene.label}」，可直接点「生成 3 版预览」`,
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : "示例加载失败");
@@ -242,7 +242,7 @@ export default function Home() {
       setPreviews(next);
       setSelected(next[0]?.id ?? null);
       setCopySource(source);
-      setHint("已生成 3 版，点选一版后导出 PNG");
+      setHint("三版已就绪，点选一版后导出 PNG");
     } catch (e) {
       setPreviews([]);
       setSelected(null);
@@ -290,7 +290,7 @@ export default function Home() {
           <div>
             <h1 className="header-title">主图卖点卡</h1>
             <p className="header-sub">
-              上传场景图，填极短卖点（每条≤6字），生成 3 版场景主图并导出 PNG
+              场景图 + 短卖点（每条≤6字）→ 三版主图预览 → 导出 PNG
             </p>
           </div>
           <span className="platform-pill">{PLATFORM_LABEL}</span>
@@ -307,7 +307,7 @@ export default function Home() {
                 onClick={() => void fillDemo("dining")}
                 disabled={busy || demoBusy}
               >
-                {demoBusy ? "加载示例…" : "填入示例"}
+                {demoBusy ? "加载中…" : "餐厅示例"}
               </button>
               <button
                 type="button"
@@ -315,11 +315,11 @@ export default function Home() {
                 onClick={() => void fillDemo("living")}
                 disabled={busy || demoBusy}
               >
-                换场景样图
+                客厅示例
               </button>
             </div>
             <p className="demo-hint">
-              「填入示例」餐厅场景；「换场景样图」客厅沙发场景。均可直接生成，也可再换成自己的图
+              一键填入样图与短卖点，可直接生成；也可换成自己的场景图
             </p>
           </div>
 
@@ -369,13 +369,13 @@ export default function Home() {
                   <span className="dropzone-icon" aria-hidden>
                     ↑
                   </span>
-                  <span className="dropzone-title">点击或拖拽上传</span>
-                  <span className="dropzone-hint">JPG / PNG / WebP · 建议方图</span>
+                  <span className="dropzone-title">点击或拖入场景图</span>
+                  <span className="dropzone-hint">JPG / PNG / WebP · 方图效果更好</span>
                 </>
               )}
             </div>
             {!file && (
-              <p className="field-help">没有场景图无法生成主图卖点卡</p>
+              <p className="field-help">先上传一张场景图，或点上方示例</p>
             )}
           </div>
 
@@ -431,7 +431,11 @@ export default function Home() {
                     type="text"
                     value={p}
                     onChange={(e) => updatePoint(i, e.target.value)}
-                    placeholder={`卖点 ${i + 1}，≤6字如：榫卯`}
+                    placeholder={
+                      ["例如：原木榫卯", "例如：1.4米", "例如：环保漆", "例如：可拆洗", "例如：实木腿"][
+                        i
+                      ] ?? `卖点 ${i + 1}（≤6字）`
+                    }
                     className="input"
                     maxLength={6}
                     aria-label={`卖点 ${i + 1}`}
@@ -469,7 +473,7 @@ export default function Home() {
                 setBadgeText(e.target.value);
                 setExportOk(false);
               }}
-              placeholder="例如：满减"
+              placeholder="满减 / 爆款 / 新品"
               className="input"
               maxLength={12}
             />
@@ -532,13 +536,13 @@ export default function Home() {
             <div className="empty-state">
               <ol className="empty-steps">
                 <li className={file ? "done" : ""}>
-                  上传场景图（或点「填入示例」/「换场景样图」）
+                  上传场景图，或点「餐厅示例 / 客厅示例」
                 </li>
                 <li className={productName.trim() ? "done" : ""}>填写产品名</li>
                 <li className={filledPoints.length >= MIN_POINTS ? "done" : ""}>
-                  填写至少 3 条卖点
+                  填满至少 3 条短卖点
                 </li>
-                <li>点击生成，在此查看三版布局</li>
+                <li>点「生成 3 版预览」，在此选版导出</li>
               </ol>
             </div>
           ) : (
@@ -583,7 +587,7 @@ export default function Home() {
             disabled={!canExport}
             className="btn btn-secondary"
           >
-            {exportOk ? "已导出 ✓" : "导出选中版 PNG"}
+            {exportOk ? "已导出 ✓" : "导出 PNG"}
           </button>
           <p className="btn-hint export-size-hint">
             导出尺寸固定 {CANVAS_SIZE}×{CANVAS_SIZE} PNG（淘宝主图）

@@ -96,7 +96,7 @@ export const LAYOUTS: LayoutPreset[] = [
     // Commercial A: bottom promo strip — horizontal chips + tiny title + price tag
     id: "bottom-band",
     name: "底边筹码",
-    description: "底边促销条：横排白筹码 + 小标题 + 左上价签，适合场景下半留白",
+    description: "底边横排筹码 · 左上价签",
     imageFit: "cover-center",
     overlays: [
       {
@@ -163,7 +163,7 @@ export const LAYOUTS: LayoutPreset[] = [
     // Commercial B: left selling column — vertical accent-bar chips + amber tag
     id: "left-panel",
     name: "左边筹码",
-    description: "左侧卖点列：竖排暖色描边筹码 + 右上琥珀标，适合右侧留主体",
+    description: "左侧竖排筹码 · 右上琥珀标",
     imageFit: "cover-center",
     overlays: [
       {
@@ -230,7 +230,7 @@ export const LAYOUTS: LayoutPreset[] = [
     // Commercial C: floating corner stack — dark glass chips + classic ribbon
     id: "corner-stack",
     name: "浮层筹码",
-    description: "右下浮层：深色玻璃筹码叠放 + 左上丝带角标，场景几乎不挡",
+    description: "右下玻璃筹码 · 左上丝带",
     imageFit: "cover-center",
     overlays: [
       {
