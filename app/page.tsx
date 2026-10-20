@@ -17,6 +17,12 @@ import {
   type DemoSceneId,
 } from "@/lib/demo";
 import {
+  REAL_SKUS,
+  REAL_SKU_LIST,
+  loadRealSkuImageFile,
+  type RealSkuId,
+} from "@/lib/skus";
+import {
   DEFAULT_PLATFORM_ID,
   getPlatform,
   PLATFORMS,
@@ -49,7 +55,9 @@ export default function Home() {
   const [copySource, setCopySource] = useState<"llm" | "template" | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [platformId, setPlatformId] = useState<PlatformId>(DEFAULT_PLATFORM_ID);
+  const [activeSkuId, setActiveSkuId] = useState<RealSkuId | null>(null);
   const platform = useMemo(() => getPlatform(platformId), [platformId]);
+  const activeSku = activeSkuId ? REAL_SKUS[activeSkuId] : null;
   const canvasSize = platform.width;
   const exportTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -105,6 +113,7 @@ export default function Home() {
     setPreviews([]);
     setSelected(null);
     setCopySource(null);
+    setActiveSkuId(null);
     setPreviewUrl((prev) => {
       if (prev) URL.revokeObjectURL(prev);
       return null;
@@ -161,11 +170,35 @@ export default function Home() {
       setBadgeText(scene.badge);
       const demoFile = await loadDemoImageFile(sceneId);
       await onFileChange(demoFile);
+      setActiveSkuId(null);
       setHint(
         `已填入「${scene.label}」，可直接点「生成 3 版预览」`,
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : "示例加载失败");
+    } finally {
+      setDemoBusy(false);
+    }
+  };
+
+  const fillRealSku = async (skuId: RealSkuId) => {
+    setError(null);
+    setExportOk(false);
+    setDemoBusy(true);
+    try {
+      const sku = REAL_SKUS[skuId];
+      setProductName(sku.productName);
+      setPoints([...sku.points]);
+      setBadgeText(sku.badge);
+      const skuFile = await loadRealSkuImageFile(skuId);
+      await onFileChange(skuFile);
+      setActiveSkuId(sku.id);
+      setHint(
+        `已载入真实 SKU「${sku.productName}」，可直接点「生成 3 版预览」`,
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "真实 SKU 加载失败");
+      setActiveSkuId(null);
     } finally {
       setDemoBusy(false);
     }
@@ -273,6 +306,7 @@ export default function Home() {
       item.name,
       platform.slug,
       canvasSize,
+      activeSkuId,
     );
     try {
       const png = await exportPngFromDataUrl(item.dataUrl, canvasSize);
@@ -330,7 +364,32 @@ export default function Home() {
               </button>
             </div>
             <p className="demo-hint">
-              一键填入样图与短卖点，可直接生成；也可换成自己的场景图
+              场景示例：一键填入样图与短卖点，可直接生成；也可换成自己的场景图
+            </p>
+          </div>
+
+          <div className="demo-row sku-row">
+            <p className="section-label">真实 SKU</p>
+            <div className="demo-actions">
+              {REAL_SKU_LIST.map((sku) => (
+                <button
+                  key={sku.id}
+                  type="button"
+                  className={`btn btn-ghost ${activeSkuId === sku.id ? "btn-ghost-active" : ""}`}
+                  onClick={() => void fillRealSku(sku.id)}
+                  disabled={busy || demoBusy}
+                >
+                  {sku.label}
+                </button>
+              ))}
+            </div>
+            {activeSku && (
+              <p className="sku-chip" aria-live="polite">
+                SKU <span className="sku-chip-code">{activeSku.id}</span>
+              </p>
+            )}
+            <p className="demo-hint">
+              载入真实商品图与预设卖点，导出文件名会带上 SKU 编码
             </p>
           </div>
 
@@ -566,7 +625,7 @@ export default function Home() {
             <div className="empty-state">
               <ol className="empty-steps">
                 <li className={file ? "done" : ""}>
-                  上传场景图，或点「餐厅示例 / 客厅示例」
+                  上传场景图，或点场景示例 / 真实 SKU
                 </li>
                 <li className={productName.trim() ? "done" : ""}>填写产品名</li>
                 <li className={filledPoints.length >= MIN_POINTS ? "done" : ""}>

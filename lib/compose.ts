@@ -679,12 +679,13 @@ export function exportPngFromDataUrl(
   });
 }
 
-/** Safe download name: `{productName}-{layout}-{slug}-{size}.png` */
+/** Safe download name: `{productName}[-{sku}]-{layout}-{slug}-{size}.png` */
 export function sanitizeExportFilename(
   productName: string,
   layoutLabel: string,
   platformSlug: string,
   size: number,
+  skuSlug?: string | null,
 ): string {
   const clean = (s: string, fallback: string) => {
     const t = s
@@ -696,7 +697,14 @@ export function sanitizeExportFilename(
     return t || fallback;
   };
   const slug = clean(platformSlug, "taobao");
-  return `${clean(productName, "商品")}-${clean(layoutLabel, "布局")}-${slug}-${size}.png`;
+  const parts = [
+    clean(productName, "商品"),
+    skuSlug ? clean(skuSlug, "sku") : null,
+    clean(layoutLabel, "布局"),
+    slug,
+    String(size),
+  ].filter((p): p is string => Boolean(p));
+  return `${parts.join("-")}.png`;
 }
 
 export function downloadPng(dataUrl: string, filename: string) {
